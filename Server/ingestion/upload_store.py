@@ -2,6 +2,7 @@
 
 import shutil
 import time
+import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -31,7 +32,8 @@ def remove_old_uploads() -> None:
 
 def save_uploads(files: list[UploadFile]) -> Path:
     """Write the files to a new folder and return it."""
-    folder = UPLOADS_DIR / f"upload_{time.strftime('%Y%m%d_%H%M%S')}_{time.time_ns() % 1000:03d}"
+    # time first so folders sort by age; a random part keeps two uploads in the same second apart
+    folder = UPLOADS_DIR / f"upload_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
     folder.mkdir(parents=True, exist_ok=True)
     used: set[str] = set()
     for upload in files:
