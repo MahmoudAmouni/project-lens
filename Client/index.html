@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProjectLens</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#1B3A5C" />
+    <script>
+      // Set the theme before React starts, so a dark page never flashes white (same rules as useTheme.js).
+      try {
+        const saved = localStorage.getItem("projectlens-theme");
+        const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.classList.toggle("dark", dark);
+        // Same for the screen language (see src/i18n): Arabic is right-to-left from the first paint.
+        const language = localStorage.getItem("projectlens-language") || navigator.language || "en";
+        document.documentElement.lang = language.startsWith("ar") ? "ar" : "en";
+        document.documentElement.dir = language.startsWith("ar") ? "rtl" : "ltr";
+      } catch {}
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

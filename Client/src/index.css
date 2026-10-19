@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Theme tokens as "R G B" so Tailwind opacity works (bg-brand-teal/15). Light first, then dark. */
+  :root {
+    color-scheme: light;
+    --page: 247 249 251; /* #F7F9FB */
+    --surface: 255 255 255; /* #FFFFFF */
+    --line: 227 232 238; /* #E3E8EE */
+    --row-alt: 250 251 252; /* zebra rows */
+    --ink: 15 27 42; /* #0F1B2A */
+    --ink-quiet: 91 107 125; /* #5B6B7D */
+    --heading: 27 58 92; /* navy titles */
+    --on-teal: 255 255 255; /* text on teal buttons */
+    --brand-navy: 27 58 92; /* #1B3A5C */
+    --brand-navy-dark: 20 45 72; /* #142D48 */
+    --brand-navy-light: 36 73 111; /* #24496F */
+    --brand-teal: 20 168 154; /* #14A89A */
+    --brand-teal-dark: 14 128 117; /* #0E8075, teal text on light backgrounds */
+    --brand-teal-soft: 231 246 244; /* #E7F6F4 */
+    --status-ok: 22 163 74; /* #16A34A */
+    --status-warn: 217 119 6; /* #D97706 */
+    --status-error: 220 38 38; /* #DC2626 */
+    --status-error-soft: 254 242 242; /* #FEF2F2 */
+  }
+
+  .dark {
+    color-scheme: dark;
+    --page: 11 18 32; /* #0B1220 */
+    --surface: 18 27 43; /* #121B2B */
+    --line: 34 48 71; /* #223047 */
+    --row-alt: 22 33 52; /* #162134 */
+    --ink: 230 237 245; /* #E6EDF5 */
+    --ink-quiet: 148 163 184; /* #94A3B8 */
+    --heading: 230 237 245; /* light titles: navy would vanish on dark */
+    --on-teal: 11 18 32; /* dark text: white is unreadable on the brighter teal */
+    --brand-navy: 30 58 95; /* #1E3A5F sidebar */
+    --brand-navy-dark: 19 38 61; /* #13263D */
+    --brand-navy-light: 36 73 111; /* #24496F user bubble */
+    --brand-teal: 45 212 191; /* #2DD4BF, brighter so it stays readable */
+    --brand-teal-dark: 94 234 212; /* #5EEAD4, teal text on dark backgrounds */
+    --brand-teal-soft: 15 46 46; /* #0F2E2E */
+    --status-ok: 74 222 128; /* #4ADE80 */
+    --status-warn: 251 191 36; /* #FBBF24 */
+    --status-error: 248 113 113; /* #F87171 */
+    --status-error-soft: 42 18 21; /* #2A1215 */
+  }
+
+  body {
+    @apply bg-page font-sans text-sm text-ink antialiased;
+  }
+
+  /* Arabic needs more room between lines */
+  html[lang="ar"] body {
+    line-height: 1.7;
+  }
+
+  /* Smooth theme switch, off for people who prefer less motion */
+  @media (prefers-reduced-motion: no-preference) {
+    body,
+    aside,
+    header,
+    main,
+    article,
+    textarea,
+    input,
+    button {
+      transition:
+        background-color 150ms,
+        border-color 150ms,
+        color 150ms;
+    }
+  }
+
+  /* Visible keyboard focus everywhere, in the brand teal */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-teal ring-offset-1;
+  }
+}
+
+@layer components {
+  /* Numbers line up in columns */
+  .numbers {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Markdown inside answer cards (no typography plugin: small and explicit) */
+  .answer-markdown {
+    @apply space-y-2 leading-relaxed;
+  }
+  .answer-markdown h1,
+  .answer-markdown h2,
+  .answer-markdown h3 {
+    @apply font-semibold text-heading;
+  }
+  .answer-markdown h1 {
+    @apply text-base;
+  }
+  .answer-markdown ul {
+    @apply list-disc space-y-1 ps-5;
+  }
+  .answer-markdown ol {
+    @apply list-decimal space-y-1 ps-5;
+  }
+  .answer-markdown strong {
+    @apply font-semibold text-ink;
+  }
+  .answer-markdown a {
+    @apply text-brand-teal-dark underline;
+  }
+  .answer-markdown code {
+    @apply rounded bg-page px-1 py-0.5 text-[13px];
+  }
+  .answer-markdown table {
+    @apply my-2 w-full border-collapse text-[13px];
+  }
+  .answer-markdown th,
+  .answer-markdown td {
+    @apply border border-line px-2 py-1 text-start;
+  }
+  .answer-markdown th {
+    @apply bg-page font-semibold;
+  }
+}
+
+/* Language switch: the old screen fades out while the new one (other direction) fades in */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: ease-in-out;
+}
