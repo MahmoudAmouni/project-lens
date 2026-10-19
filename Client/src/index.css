@@ -52,6 +52,11 @@
     @apply bg-page font-sans text-sm text-ink antialiased;
   }
 
+  /* Arabic needs more room between lines */
+  html[lang="ar"] body {
+    line-height: 1.7;
+  }
+
   /* Smooth theme switch, off for people who prefer less motion */
   @media (prefers-reduced-motion: no-preference) {
     body,
@@ -94,10 +99,10 @@
     @apply text-base;
   }
   .answer-markdown ul {
-    @apply list-disc space-y-1 pl-5;
+    @apply list-disc space-y-1 ps-5;
   }
   .answer-markdown ol {
-    @apply list-decimal space-y-1 pl-5;
+    @apply list-decimal space-y-1 ps-5;
   }
   .answer-markdown strong {
     @apply font-semibold text-ink;
@@ -113,7 +118,7 @@
   }
   .answer-markdown th,
   .answer-markdown td {
-    @apply border border-line px-2 py-1 text-left;
+    @apply border border-line px-2 py-1 text-start;
   }
   .answer-markdown th {
     @apply bg-page font-semibold;
