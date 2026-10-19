@@ -8,13 +8,18 @@ import { formatNumber } from "../../utils/formatters";
 /** "openai/gpt-oss-120b" -> "gpt-oss-120b" */
 const shortName = (name = "") => name.split("/").pop();
 
+/** Gemini's free tier limits requests per day, not tokens: the Server sends no daily token limit for it. */
+const countsRequests = (model) => model?.daily_token_limit == null;
+const leftToday = (model) => (countsRequests(model) ? model.requests_left_today : model.tokens_left_today);
+
 function percentLeft(model) {
-  if (!model?.daily_token_limit) return 100;
-  return Math.round((100 * model.tokens_left_today) / model.daily_token_limit);
+  const limit = countsRequests(model) ? model?.daily_request_limit : model?.daily_token_limit;
+  if (!limit || leftToday(model) == null) return 100;
+  return Math.round((100 * leftToday(model)) / limit);
 }
 
 function barColor(model) {
-  if (model.limited_for_seconds > 0 || model.tokens_left_today === 0) return "bg-status-error";
+  if (model.limited_for_seconds > 0 || leftToday(model) === 0) return "bg-status-error";
   return percentLeft(model) < 15 ? "bg-status-warn" : "bg-brand-teal";
 }
 
@@ -35,13 +40,24 @@ function ModelOption({ model, selected, onPick }) {
         <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-line">
           <span className={`block h-full ${barColor(model)}`} style={{ width: `${percentLeft(model)}%` }} />
         </span>
-        <span className="mt-1 block text-xs text-ink-quiet">
-          {t("models.tokensLeft", {
-            left: formatNumber(model.tokens_left_today),
-            limit: formatNumber(model.daily_token_limit),
-          })}
-        </span>
-        {model.requests_left_today != null && (
+        {countsRequests(model) ? (
+          <span className="mt-1 block text-xs text-ink-quiet">
+            {model.requests_left_today != null &&
+              `${t("models.requestsLeftOf", {
+                left: formatNumber(model.requests_left_today),
+                limit: formatNumber(model.daily_request_limit),
+              })} · `}
+            {t("models.tokensUsed", { count: model.tokens_used_today })}
+          </span>
+        ) : (
+          <span className="mt-1 block text-xs text-ink-quiet">
+            {t("models.tokensLeft", {
+              left: formatNumber(model.tokens_left_today),
+              limit: formatNumber(model.daily_token_limit),
+            })}
+          </span>
+        )}
+        {!countsRequests(model) && model.requests_left_today != null && (
           <span className="block text-xs text-ink-quiet">
             {t("models.requestsLeft", { count: model.requests_left_today })}
             {model.tokens_left_this_minute != null &&
