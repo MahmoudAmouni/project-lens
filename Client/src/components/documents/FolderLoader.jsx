@@ -2,8 +2,11 @@
 
 import { FolderOpen, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { errorText } from "../../utils/errorText";
 
 export default function FolderLoader({ folder, loading, error, onLoad }) {
+  const { t } = useTranslation();
   const [path, setPath] = useState("");
 
   function submit(event) {
@@ -17,14 +20,15 @@ export default function FolderLoader({ folder, loading, error, onLoad }) {
         htmlFor="folder-path"
         className="block px-0.5 text-xs font-semibold uppercase tracking-wide text-white/50"
       >
-        Folder
+        {t("sidebar.folder")}
       </label>
       <div className="flex gap-2">
         <input
           id="folder-path"
+          dir="ltr"
           value={path}
           onChange={(event) => setPath(event.target.value)}
-          placeholder={folder ?? "C:/docs/tender"}
+          placeholder={folder ?? t("sidebar.folderPlaceholder")}
           className="min-w-0 flex-1 rounded-button border border-white/15 bg-brand-navy-dark px-3 py-2 text-white placeholder:text-white/35 focus:border-brand-teal"
           spellCheck="false"
         />
@@ -38,7 +42,7 @@ export default function FolderLoader({ folder, loading, error, onLoad }) {
           ) : (
             <FolderOpen size={16} aria-hidden="true" />
           )}
-          Load
+          {t("sidebar.load")}
         </button>
       </div>
       {error && (
@@ -46,7 +50,7 @@ export default function FolderLoader({ folder, loading, error, onLoad }) {
           className="rounded-button bg-status-error/25 px-3 py-2 text-xs leading-relaxed text-white"
           role="alert"
         >
-          {error.message}
+          {errorText(t, error)}
         </p>
       )}
     </form>
