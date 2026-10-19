@@ -99,7 +99,7 @@ def test_history_is_limited_to_the_last_six_messages(documents):
     Agent(llm, documents).ask("new question", history)
     sent = llm.requests[0]["messages"]
     assert [m["content"] for m in sent[1:-1]] == ["m4", "m5", "m6", "m7", "m8", "m9"]
-    assert sent[-1] == {"role": "user", "content": "new question"}
+    assert sent[-1]["role"] == "user" and sent[-1]["content"].startswith("new question\n\n[Notes for you")
 
 
 def test_exact_repeated_tool_call_is_refused(documents):
