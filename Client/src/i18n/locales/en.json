@@ -15,7 +15,9 @@
     "requestsLeft": "{{count}} requests left today",
     "minuteLeft": "{{count}} tokens this minute",
     "limited": "Limit reached: free again in about {{minutes}} min",
-    "note": "Free Groq limits, per model. Requests and tokens per minute come from Groq; tokens today are counted by the app and corrected when Groq reports a limit. If the chosen model runs out, another one answers."
+    "requestsLeftOf": "About {{left}} of {{limit}} requests left today",
+    "tokensUsed": "{{count}} tokens used today",
+    "note": "Free limits, per model. For Groq models, requests and tokens per minute come from Groq; tokens today are counted by the app and corrected when Groq reports a limit. Gemini counts requests per day instead of tokens. If the chosen model runs out, a Groq model answers."
   },
   "theme": { "toDark": "Switch to dark mode", "toLight": "Switch to light mode" },
   "language": { "switch": "التبديل إلى العربية" },
