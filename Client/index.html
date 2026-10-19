@@ -6,6 +6,14 @@
     <title>ProjectLens</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="theme-color" content="#1B3A5C" />
+    <script>
+      // Set the theme before React starts, so a dark page never flashes white (same rules as useTheme.js).
+      try {
+        const saved = localStorage.getItem("projectlens-theme");
+        const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.classList.toggle("dark", dark);
+      } catch {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
