@@ -1,8 +1,10 @@
-"""How much of each model's free Groq limit is left: tokens today, requests today, tokens this minute.
+"""How much of each model's free limit is left: tokens today, requests today, tokens this minute.
 
 Groq sends "requests left today" and "tokens left this minute" with every reply, but not "tokens left today".
 So we count the tokens of every reply (a rolling 24 hours, like Groq), and when Groq's daily-limit error
-tells us the exact "Used" and "Limit", we take those numbers instead. Saved to a file, so a restart keeps them.
+tells us the exact "Used" and "Limit", we take those numbers instead. Gemini's free tier limits requests per
+day and sends no limit headers, so for Gemini we count requests, and its quota error tells us the real limit.
+Saved to a file, so a restart keeps them.
 """
 
 import json
@@ -15,6 +17,7 @@ from pathlib import Path
 DAY_SECONDS = 24 * 60 * 60
 DEFAULT_DAILY_TOKEN_LIMIT = 200_000  # Groq's free tier for the gpt-oss and qwen models; corrected by its errors
 DAILY_LIMIT_PATTERN = re.compile(r"tokens per day \(TPD\): Limit (\d+), Used (\d+)")
+GEMINI_DAILY_QUOTA_PATTERN = re.compile(r"PerDay\S*.{0,300}?limit: (\d+)|limit: (\d+).{0,300}?PerDay", re.DOTALL)
 logger = logging.getLogger("projectlens")
 
 
@@ -46,12 +49,19 @@ class UsageTracker:
         entry["spent"] = [item for item in entry["spent"] if item[0] > cutoff]  # [time, tokens]
         return entry
 
+    def count_requests(self, model: str, daily_request_limit: int) -> None:
+        """For a model whose free tier limits requests per day (Gemini): count every request against it."""
+        with self.lock:
+            entry = self.entry(model)
+            entry["counts_requests"] = True
+            entry.setdefault("requests_limit", daily_request_limit)  # a limit learned from an error stays
+
     def record_reply(self, model: str, tokens: int, headers) -> None:
         """After a successful call: its tokens, and the limits Groq sent back in the headers."""
         with self.lock:
             entry = self.entry(model)
-            if tokens:
-                entry["spent"].append([time.time(), int(tokens)])
+            if tokens or entry.get("counts_requests"):
+                entry["spent"].append([time.time(), int(tokens or 0)])
             for key, header in (("requests_left", "x-ratelimit-remaining-requests"),
                                 ("requests_limit", "x-ratelimit-limit-requests"),
                                 ("minute_tokens_left", "x-ratelimit-remaining-tokens")):  # fmt: skip
@@ -71,6 +81,10 @@ class UsageTracker:
                 limit, used = int(found.group(1)), int(found.group(2))
                 entry["daily_limit"] = limit
                 entry["spent"] = [[time.time(), used]]  # Groq's own count replaces ours
+            gemini_quota = GEMINI_DAILY_QUOTA_PATTERN.search(message) if entry.get("counts_requests") else None
+            if gemini_quota:
+                entry["requests_limit"] = int(gemini_quota.group(1) or gemini_quota.group(2))
+                entry["requests_used_floor"] = [time.time(), entry["requests_limit"]]  # all used, per Google
             self.save()
 
     def snapshot(self, model: str) -> dict:
@@ -80,6 +94,9 @@ class UsageTracker:
             used = sum(tokens for _, tokens in entry["spent"])
             limit = entry.get("daily_limit", DEFAULT_DAILY_TOKEN_LIMIT)
             wait = max(0.0, entry.get("limited_until", 0) - time.time())
+            if entry.get("counts_requests"):  # Gemini: no daily token limit, a daily request limit instead
+                return {**self.request_snapshot(entry), "name": model, "tokens_used_today": used,
+                        "limited_for_seconds": round(wait)}  # fmt: skip
             return {
                 "name": model,
                 "tokens_used_today": used,
@@ -90,3 +107,18 @@ class UsageTracker:
                 "tokens_left_this_minute": entry.get("minute_tokens_left"),
                 "limited_for_seconds": round(wait),
             }
+
+    @staticmethod
+    def request_snapshot(entry: dict) -> dict:
+        requests = len(entry["spent"])
+        floor_time, floor = entry.get("requests_used_floor", [0, 0])
+        if floor_time > time.time() - DAY_SECONDS:
+            requests = max(requests, floor)
+        limit = entry.get("requests_limit")
+        return {
+            "daily_token_limit": None,
+            "tokens_left_today": None,
+            "requests_left_today": max(0, limit - requests) if limit else None,
+            "daily_request_limit": limit,
+            "tokens_left_this_minute": None,
+        }
