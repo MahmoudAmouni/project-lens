@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from AI.agent import Agent
+from AI.guards.answer_check import sources_from_history
 from AI.guards.injection_check import looks_like_injection
 from AI.router import Router
 from AI.tools.read_document import read_document
@@ -92,3 +93,29 @@ def test_document_text_with_an_injection_is_returned_as_plain_data(documents):
     page = read_document(ToolContext(documents), "Technical_Specifications.pdf", 200, 200).data["pages"][0]["text"]
     assert "IGNORE ALL PREVIOUS INSTRUCTIONS" in " ".join(page.split())
     assert INJECTION_TEXT.startswith("200.4")
+
+
+ANSWER_WITH_DATES = {
+    "role": "assistant",
+    "content": "Start: **1 March 2025**.\n\n[Sources: Contract_A.pdf — page 2; BOQ_Phase1.xlsx — sheet Summary, row 4]",
+}
+
+
+def test_sources_are_read_back_from_the_previous_answer():
+    sources = sources_from_history([{"role": "user", "content": "dates?"}, ANSWER_WITH_DATES])
+    assert [(s["document"], s["location"]) for s in sources] == [
+        ("Contract_A.pdf", "page 2"),
+        ("BOQ_Phase1.xlsx", "sheet Summary, row 4"),
+    ]
+    assert sources_from_history([{"role": "assistant", "content": "Hello!"}]) == []
+
+
+@pytest.mark.parametrize(
+    "question", ["write dates in arabic", "i mean the dates u sent in the text write them in arabic"]
+)
+def test_follow_up_about_the_last_answer_is_answered_with_its_sources(documents, question):
+    submit = call("submit_answer", {"answer": "تاريخ البدء: **1 مارس 2025**.", "sources": []})
+    agent = Agent(FakeLLM([tool_reply(submit)]), documents, router=router_saying("en", "follow_up"))
+    answer = agent.ask(question, history=[{"role": "user", "content": "contract dates?"}, ANSWER_WITH_DATES])
+    assert answer.kind == "answer" and "2025" in answer.answer
+    assert answer.sources[0]["document"] == "Contract_A.pdf"
