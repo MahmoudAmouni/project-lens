@@ -94,14 +94,14 @@ def test_chat_returns_answer_table_sources_and_steps(loaded):
 )
 def test_ai_errors_have_their_own_codes(loaded, error, status, code):
     loaded.app.state.lens.llm = FakeLLM([error])
-    response = loaded.post("/api/chat", json={"question": "hi"})
+    response = loaded.post("/api/chat", json={"question": "What are the payment terms?"})
     assert response.status_code == status and error_code(response) == code
 
 
 def test_unexpected_error_is_internal_error_not_a_crash(loaded):
     loaded.app.state.lens.llm = FakeLLM([RuntimeError("boom")])
     browser = TestClient(loaded.app, raise_server_exceptions=False)  # see the response a real client gets
-    response = browser.post("/api/chat", json={"question": "hi"})
+    response = browser.post("/api/chat", json={"question": "What are the payment terms?"})
     assert response.status_code == 500 and error_code(response) == "INTERNAL_ERROR"
     assert "boom" not in response.text  # internals stay in the server log
 
@@ -142,3 +142,14 @@ def test_uploads_in_the_same_second_get_their_own_folders(tmp_path, monkeypatch)
     monkeypatch.setattr(upload_store, "KEEP_UPLOADS", 10)
     folders = {upload_store.save_uploads([]) for _ in range(20)}
     assert len(folders) == 20
+
+
+def test_chat_returns_kind_style_and_suggestions_for_a_greeting(loaded):
+    body = loaded.post("/api/chat", json={"question": "مرحبا", "ui_language": "ar"}).json()
+    assert (body["kind"], body["style"]) == ("greeting", "ar")
+    assert body["suggestions"] and body["sources"] == []
+
+
+def test_chat_rejects_an_unknown_ui_language(loaded):
+    response = loaded.post("/api/chat", json={"question": "BOQ?", "ui_language": "fr"})
+    assert response.status_code == 422 and error_code(response) == "INVALID_REQUEST"
