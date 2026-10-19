@@ -1,4 +1,4 @@
-// Chat state: the messages, sending a question, retrying after an error, clearing the chat.
+// Chat state: the messages, sending a question, stopping it, retrying after an error, clearing the chat.
 
 import { useCallback, useRef, useState } from "react";
 import { askQuestion } from "../api/serverApi";
@@ -11,16 +11,17 @@ let nextId = 1;
 const screenLanguage = () => (document.documentElement.lang === "ar" ? "ar" : "en");
 const newId = () => nextId++;
 
-/** Messages look like: { id, role: "user" | "agent" | "error", text, answer?, question? } */
+/** Messages look like: { id, role: "user" | "agent" | "error" | "stopped", text, answer?, question? } */
 export function useChat() {
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const controller = useRef(null);
 
   const history = () =>
     messagesRef.current
-      .filter((message) => message.role !== "error")
+      .filter((message) => message.role === "user" || message.role === "agent")
       .slice(-HISTORY_MESSAGES)
       .map((message) => ({ role: message.role === "user" ? "user" : "assistant", content: message.text }));
 
@@ -30,23 +31,29 @@ export function useChat() {
     const past = history();
     setMessages((current) => [...current, { id: newId(), role: "user", text }]);
     setSending(true);
+    controller.current = new AbortController();
     try {
-      const answer = await askQuestion(text, past, screenLanguage());
+      const answer = await askQuestion(text, past, screenLanguage(), controller.current.signal);
       setMessages((current) => [
         ...current,
         { id: newId(), role: "agent", text: answer.answer, answer, question: text },
       ]);
     } catch (err) {
+      const role = err.code === "STOPPED" ? "stopped" : "error";
       setMessages((current) => [
         ...current,
-        { id: newId(), role: "error", text: err.message, code: err.code, question: text },
+        { id: newId(), role, text: err.message, code: err.code, question: text },
       ]);
     } finally {
+      controller.current = null;
       setSending(false);
     }
   }, []);
 
-  /** Ask the question of an error card again: the error and its question bubble are replaced. */
+  /** Stop the question being answered: the request is cancelled and the Server stops the agent. */
+  const stop = useCallback(() => controller.current?.abort(), []);
+
+  /** Ask again after an error or a stop: that card and its question bubble are replaced. */
   const retry = useCallback(
     (errorId) => {
       const all = messagesRef.current;
@@ -62,5 +69,5 @@ export function useChat() {
 
   const clear = useCallback(() => setMessages([]), []);
 
-  return { messages, sending, send, retry, clear };
+  return { messages, sending, send, stop, retry, clear };
 }
