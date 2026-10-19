@@ -59,6 +59,6 @@ export function uploadFiles(files) {
   return request("/documents/upload", { method: "POST", body: form });
 }
 
-export function askQuestion(question, history) {
-  return postJson("/chat", { question, history });
+export function askQuestion(question, history, uiLanguage) {
+  return postJson("/chat", { question, history, ui_language: uiLanguage });
 }
