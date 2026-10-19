@@ -9,6 +9,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 
+from AI.errors import QuestionStopped
 from AI.guards.injection_check import looks_like_injection
 from AI.language.style_detect import detect_style, looks_like_greeting
 from AI.prompts import ROUTER_PROMPT
@@ -104,6 +105,8 @@ class Router:
             route = with_plain_checks(parse_route(self.llm.complete_json(messages), fallback), fallback)
             logger.info("Router: %s, %s", route.intent, route.style)
             return route
+        except QuestionStopped:
+            raise  # the user pressed Stop: end here, do not fall back
         except Exception as error:  # the router must never block a question
             logger.warning("Router failed, using the fail-safe: %s", error)
             return fallback
