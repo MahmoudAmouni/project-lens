@@ -67,7 +67,8 @@ python -m Server.cli ./sample_docs
 | --- | --- | --- |
 | `GROQ_API_KEY` | (none) | Your Groq key. Only in `.env`, never in code or commits |
 | `MODEL` | `openai/gpt-oss-120b` | Main model |
-| `FALLBACK_MODEL` | `openai/gpt-oss-20b,qwen/qwen3.8-27b` | Backup models, used in turn when the main one hits a rate limit |
+| `FALLBACK_MODEL` | `openai/gpt-oss-20b,qwen/qwen3.8-27b` | Backup models, used in turn when the main one hits a rate limit. `MODEL` and these are the choices in the app's model picker |
+| `USAGE_FILE` | `./.usage/token_usage.json` | Tokens used per model today, for the "tokens left" numbers in the model picker |
 | `DOCS_FOLDER` | `./sample_docs` | Folder loaded when the server starts (optional) |
 | `MAX_FILE_MB` | `100` | Bigger files are skipped and marked "too large" |
 | `CHROMA_DIR` | `./.chroma` | Where the search index is saved |
