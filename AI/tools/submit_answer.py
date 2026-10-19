@@ -61,6 +61,7 @@ def submit_answer(
     table: dict | None = None,
     sources: list | None = None,
     table_result_id: str | list | None = None,
+    kind: str | None = None,
 ) -> ToolResult:
     """Check and package the final answer. `table_result_id` ("t1" or "t1,t2") attaches query_table rows
     exactly as computed."""
@@ -75,5 +76,10 @@ def submit_answer(
         table = combine_saved_tables(context, table_ids)
     table = clean_table(table)
     text = without_markdown_tables(str(answer)) if table else str(answer).strip()
-    final = FinalAnswer(answer=text or str(answer).strip(), table=table, sources=clean_sources(context, sources))
+    final = FinalAnswer(
+        answer=text or str(answer).strip(),
+        table=table,
+        sources=clean_sources(context, sources),
+        kind="not_found" if kind == "not_found" else "answer",
+    )
     return ToolResult(data={"final_answer": final}, step="Wrote the answer", is_final=True)
