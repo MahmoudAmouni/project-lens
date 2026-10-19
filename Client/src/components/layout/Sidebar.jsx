@@ -7,7 +7,7 @@ import DocumentList from "../documents/DocumentList";
 import DropZone from "../documents/DropZone";
 import FolderLoader from "../documents/FolderLoader";
 
-/** The app name, with its accent word in teal: "Project<Lens>" or "<عدسة> المشروع". */
+/** The app name, with its accent word in teal: "Project<Lens>" or "<بصيرة>". */
 function AppName() {
   const { t } = useTranslation();
   const [before, after] = t("app.name").split(t("app.nameAccent"));
