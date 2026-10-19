@@ -2,8 +2,10 @@
 
 import { ChevronRight, Wrench } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export default function ToolSteps({ steps }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   if (!steps.length) return null;
 
@@ -16,13 +18,13 @@ export default function ToolSteps({ steps }) {
       >
         <ChevronRight
           size={14}
-          className={`transition-transform ${open ? "rotate-90" : ""}`}
+          className={`transition-transform ${open ? "rotate-90" : "rtl:rotate-180"}`}
           aria-hidden="true"
         />
-        How I found this ({steps.length} step{steps.length === 1 ? "" : "s"})
+        {t("answer.howFound", { count: steps.length })}
       </button>
       {open && (
-        <ol className="mt-2 animate-fade-in space-y-1 border-l-2 border-line pl-4">
+        <ol className="mt-2 animate-fade-in space-y-1 border-s-2 border-line ps-4">
           {steps.map((step, index) => (
             <li key={index} className="flex gap-2">
               <Wrench size={12} className="mt-0.5 shrink-0 text-brand-teal" aria-hidden="true" />
