@@ -18,13 +18,14 @@ GREETINGS = {
     "hi", "hello", "hey", "thanks", "thank you", "good morning", "who are you", "what can you do",
     "marhaba", "mar7aba", "ahla", "ahlan", "kifak", "kifik", "salam", "merci", "shukran", "yislamo",
     "مرحبا", "اهلا", "أهلا", "السلام عليكم", "شكرا", "كيفك", "مين انت", "من انت", "صباح الخير",
-    # asking the AI its name: the greeting reply says it ("I'm ProjectLens" / "أنا بصيرة")
-    "what is your name", "what s your name", "whats your name", "your name", "who r u", "who are u",
-    "what are you called", "what should i call you",
-    "shu esmak", "shu ismak", "shu esmik", "shou esmak", "chou esmak", "esmak", "ismak", "min enta", "meen enta",
-    "شو اسمك", "ما اسمك", "ما هو اسمك", "اسمك", "شو اسمك انت", "اسمك شو", "مين حضرتك", "من أنت",
+    "who r u", "who are u", "what are you called", "what should i call you",
+    "min enta", "meen enta", "min inta", "meen inta", "مين حضرتك", "من أنت", "مين انتا",
 }  # fmt: skip
 NORMALIZED_GREETINGS = {normalize_arabic(text) for text in GREETINGS}
+# "your name" in any wording ("what is ur name", "sho esmak enta", "شو اسمك؟"): the greeting reply says the name
+YOUR_NAME_WORDS = {"esmak", "ismak", "esmik", "ismik", "esmek", "smak", "اسمك", "اسمكم", "شسمك"}
+YOUR_WORDS = {"your", "ur", "yr", "you", "u"}
+NAME_QUESTION_MAX_WORDS = 6  # longer messages may ask about a name in the documents
 
 
 def words_of(text: str) -> list[str]:
@@ -53,5 +54,14 @@ def detect_style(text: str, ui_language: str | None = None) -> str:
 
 
 def looks_like_greeting(text: str) -> bool:
-    """Only the whole message: "hi" is a greeting, "hi, list the BOQ items" is not."""
-    return " ".join(words_of(text)) in NORMALIZED_GREETINGS
+    """Only the whole message: "hi" is a greeting, "hi, list the BOQ items" is not. Asking the AI's name is too."""
+    words = words_of(text)
+    return " ".join(words) in NORMALIZED_GREETINGS or asks_for_my_name(words)
+
+
+def asks_for_my_name(words: list[str]) -> bool:
+    """A short message about "your name": "what is ur name", "sho esmak enta", "ما اسمك" (not "contractor name")."""
+    if not words or len(words) > NAME_QUESTION_MAX_WORDS:
+        return False
+    found = set(words)
+    return bool(found & YOUR_NAME_WORDS) or ("name" in found and bool(found & YOUR_WORDS))
