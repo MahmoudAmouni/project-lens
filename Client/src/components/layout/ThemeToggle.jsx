@@ -1,10 +1,12 @@
 // Sun/moon button in the top bar.
 
 import { Moon, Sun } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function ThemeToggle({ theme, onToggle }) {
+  const { t } = useTranslation();
   const dark = theme === "dark";
-  const label = dark ? "Switch to light mode" : "Switch to dark mode";
+  const label = dark ? t("theme.toLight") : t("theme.toDark");
   return (
     <button
       onClick={onToggle}
