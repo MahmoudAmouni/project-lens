@@ -13,11 +13,14 @@ def chat(body: ChatRequest, request: Request) -> ChatResponse:
     """The agent answers from the documents, with sources and the steps it took."""
     state: AppState = request.app.state.lens
     history = [message.model_dump() for message in body.history]
-    answer = state.ask(body.question.strip(), history)
+    answer = state.ask(body.question.strip(), history, body.ui_language)
     return ChatResponse(
         answer=answer.answer,
         table=answer.table,
         sources=answer.sources,
         steps=answer.steps,
         model=answer.model,
+        kind=answer.kind,
+        style=answer.style,
+        suggestions=answer.suggestions,
     )
