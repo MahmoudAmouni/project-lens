@@ -11,6 +11,7 @@ __pycache__/
 # Local data: vector store and files uploaded in the browser
 .chroma/
 .uploads/
+.usage/
 
 # Node
 node_modules/
