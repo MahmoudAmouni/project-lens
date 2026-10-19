@@ -2,6 +2,7 @@
 
 Groq's free tier allows about 8,000 tokens per minute per model. On a rate limit we switch to the
 other model (it has its own limit); when both are limited we wait as long as Groq asks, then retry.
+The user may pick which model goes first; every reply's token use is counted (see usage_tracker.py).
 """
 
 import json
@@ -17,6 +18,7 @@ from AI.errors import (
     RequestTooLargeError,
     ToolCallFormatError,
 )
+from AI.usage_tracker import UsageTracker
 
 MAX_TRIES = 3  # for errors other than rate limits (timeouts, Groq server errors)
 MAX_TOTAL_WAIT_SECONDS = 90.0  # rate limits are normal on the free tier: wait up to this long in total
@@ -49,6 +51,7 @@ class LLMClient:
         fallback_model: str | None = None,
         reasoning_effort: str = "medium",
         max_wait_seconds: float = MAX_TOTAL_WAIT_SECONDS,
+        usage: UsageTracker | None = None,
     ):
         """`fallback_model` may list several models: "openai/gpt-oss-20b,qwen/qwen3.8-27b"."""
         if not api_key:
@@ -56,6 +59,8 @@ class LLMClient:
         self.client = groq.Groq(api_key=api_key, timeout=REQUEST_TIMEOUT_SECONDS, max_retries=0)
         backups = [name.strip() for name in (fallback_model or "").split(",") if name.strip()]
         self.models = list(dict.fromkeys([model, *backups]))  # each model has its own Groq limits
+        self.configured_models = list(self.models)  # the choices shown to the user
+        self.usage = usage or UsageTracker()
         self.reasoning_effort = reasoning_effort
         self.limited_until: dict[str, float] = {}  # model -> time its rate limit resets
         self.daily_limit_hit = False
@@ -65,6 +70,20 @@ class LLMClient:
     @property
     def model(self) -> str:
         return self.models[0] if self.models else ""
+
+    def prefer(self, model: str | None) -> None:
+        """Try the model the user picked first; the others stay as backups. Unknown names are ignored."""
+        if model in self.models:
+            self.models = [model, *[name for name in self.models if name != model]]
+
+    def check(self, model: str) -> None:
+        """A tiny call, only to read the limits Groq sends back for this model."""
+        try:
+            self._call(model, [{"role": "user", "content": "hi"}], [], "auto", max_tokens=1)
+        except groq.RateLimitError as error:
+            self.usage.record_limit(model, str(error), retry_after_seconds(error))
+        except groq.GroqError:
+            pass  # a removed model or a network problem: the screen just shows the last known numbers
 
     def pick_model(self) -> tuple[str, float]:
         """The model whose rate limit resets first, and how long to wait for it."""
@@ -90,6 +109,7 @@ class LLMClient:
                 return self._call(model, messages, tools, tool_choice, json_mode)
             except groq.RateLimitError as error:
                 self.limited_until[model] = time.monotonic() + retry_after_seconds(error)
+                self.usage.record_limit(model, str(error), retry_after_seconds(error))
                 self.daily_limit_hit = "per day" in str(error)
                 attempt -= 1  # a rate limit is not a failure; the deadline above limits the waiting
             except groq.NotFoundError:
@@ -139,8 +159,9 @@ class LLMClient:
         return "Groq's free rate limit is reached. Wait a minute and try again."
 
     def _call(
-        self, model: str, messages: list[dict], tools: list[dict], tool_choice: str | dict, json_mode: bool = False
-    ) -> LLMReply:
+        self, model: str, messages: list[dict], tools: list[dict], tool_choice: str | dict, json_mode: bool = False,
+        max_tokens: int | None = None,
+    ) -> LLMReply:  # fmt: skip
         options: dict = {"tools": tools, "tool_choice": tool_choice} if tools else {}
         if json_mode:
             options["response_format"] = {"type": "json_object"}
@@ -148,9 +169,13 @@ class LLMClient:
             options["reasoning_effort"] = self.reasoning_effort
         elif model.startswith("qwen/"):
             options["reasoning_format"] = "hidden"  # keep <think> text out of the answer
-        response = self.client.chat.completions.create(
+        if max_tokens:
+            options["max_tokens"] = max_tokens
+        raw = self.client.chat.completions.with_raw_response.create(
             model=model, messages=messages, temperature=0 if json_mode else 0.1, **options
         )
+        response = raw.parse()
+        self.usage.record_reply(model, response.usage.total_tokens if response.usage else 0, raw.headers)
         message = response.choices[0].message
         tool_calls = [
             ToolCall(id=call.id, name=call.function.name, arguments=call.function.arguments or "{}")
