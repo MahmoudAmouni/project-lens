@@ -35,7 +35,7 @@ export default function SourceList({ sources }) {
             aria-expanded={open === index}
             className={`flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${
               open === index
-                ? "border-brand-teal bg-brand-teal text-white"
+                ? "border-brand-teal bg-brand-teal text-on-teal"
                 : "border-brand-teal/30 bg-brand-teal-soft text-brand-teal-dark hover:border-brand-teal"
             }`}
           >
