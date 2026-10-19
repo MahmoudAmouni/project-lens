@@ -21,6 +21,9 @@ class Settings:
     model: str
     fallback_model: str
     router_model: str  # small fast model(s) that read the question first: "model,backup"
+    gemini_api_key: str  # optional: adds Google Gemini as one more choice in the model picker
+    gemini_model: str
+    gemini_daily_requests: int  # Google's free daily request limit per model; corrected by its limit errors
     scope_mode: str  # "strict": only questions about the documents; "relaxed": off-topic goes to the agent too
     docs_folder: str
     max_file_mb: float
@@ -36,6 +39,9 @@ def load_settings() -> Settings:
         model=os.getenv("MODEL", "openai/gpt-oss-120b").strip(),
         fallback_model=os.getenv("FALLBACK_MODEL", "openai/gpt-oss-20b,qwen/qwen3.8-27b").strip(),
         router_model=os.getenv("ROUTER_MODEL", "openai/gpt-oss-20b,qwen/qwen3.8-27b,allam-2-7b").strip(),
+        gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip(),
+        gemini_daily_requests=int(os.getenv("GEMINI_DAILY_REQUESTS", "250")),
         scope_mode=os.getenv("SCOPE_MODE", "strict").strip().lower(),
         docs_folder=project_path(docs_folder) if docs_folder else "",
         max_file_mb=float(os.getenv("MAX_FILE_MB", "100")),
