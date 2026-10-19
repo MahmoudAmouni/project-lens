@@ -72,6 +72,7 @@ class FinalAnswer:
     answer: str
     table: dict | None = None
     sources: list[Source] = field(default_factory=list)
+    kind: str = "answer"  # "answer" (from the documents) or "not_found"
 
 
 def to_plain(value: Any) -> Any:
