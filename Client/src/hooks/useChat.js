@@ -6,6 +6,9 @@ import { askQuestion } from "../api/serverApi";
 const HISTORY_MESSAGES = 6; // the Server also keeps only the last 6
 
 let nextId = 1;
+
+/** The screen language ("ar" or "en"), a hint the Server uses for very short questions like "BOQ?". */
+const screenLanguage = () => (document.documentElement.lang === "ar" ? "ar" : "en");
 const newId = () => nextId++;
 
 /** Messages look like: { id, role: "user" | "agent" | "error", text, answer?, question? } */
@@ -28,7 +31,7 @@ export function useChat() {
     setMessages((current) => [...current, { id: newId(), role: "user", text }]);
     setSending(true);
     try {
-      const answer = await askQuestion(text, past);
+      const answer = await askQuestion(text, past, screenLanguage());
       setMessages((current) => [
         ...current,
         { id: newId(), role: "agent", text: answer.answer, answer, question: text },
