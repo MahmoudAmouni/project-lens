@@ -37,7 +37,11 @@ export default function ChatWindow({ chat, documents, onAskAgain, onOpenMenu }) 
             }
             if (message.role === "error") {
               return (
-                <ErrorMessage key={message.id} text={message.text} onRetry={() => chat.retry(message.id)} />
+                <ErrorMessage
+                  key={message.id}
+                  error={{ code: message.code, message: message.text }}
+                  onRetry={() => chat.retry(message.id)}
+                />
               );
             }
             if (FIXED_REPLY_KINDS.includes(message.answer.kind)) {
