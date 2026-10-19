@@ -96,13 +96,15 @@ class AppState:
             self.llm = LLMClient(settings.groq_api_key, settings.model, settings.fallback_model)
             self.router = make_router(settings)
         if self.agent is None:
-            self.agent = Agent(self.llm, self.folder.documents, self.vector_store, self.router)
+            self.agent = Agent(
+                self.llm, self.folder.documents, self.vector_store, self.router, self.settings.scope_mode
+            )
         return self.agent
 
-    def ask(self, question: str, history: list[dict]) -> AgentAnswer:
+    def ask(self, question: str, history: list[dict], ui_language: str | None = None) -> AgentAnswer:
         agent = self.get_agent()
         with self._chat_lock:
-            return agent.ask(question, history)
+            return agent.ask(question, history, ui_language)
 
     def load_on_start(self) -> None:
         """Load DOCS_FOLDER from .env in the background, so the server starts at once."""
