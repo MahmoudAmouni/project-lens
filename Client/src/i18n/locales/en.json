@@ -1,0 +1,125 @@
+{
+  "app": { "title": "ProjectLens" },
+  "topBar": {
+    "title": "Ask your documents",
+    "openMenu": "Open documents",
+    "model": "Main AI model",
+    "clear": "Clear",
+    "clearChat": "Clear chat"
+  },
+  "theme": { "toDark": "Switch to dark mode", "toLight": "Switch to light mode" },
+  "language": { "switch": "التبديل إلى العربية" },
+  "sidebar": {
+    "closeMenu": "Close menu",
+    "folder": "Folder",
+    "folderPlaceholder": "C:/docs/tender",
+    "load": "Load",
+    "drop": "or drop files here / choose files",
+    "dropNow": "Drop to upload",
+    "documents": "Documents",
+    "noDocuments": "No documents yet. Enter a folder path above, or drop PDF and Excel files here.",
+    "skipped_one": "{{count}} file skipped ({{types}})",
+    "skipped_other": "{{count}} files skipped ({{types}})"
+  },
+  "document": {
+    "pages": "{{count}} p.",
+    "sheets_one": "{{count}} sheet",
+    "sheets_other": "{{count}} sheets",
+    "tables_one": "{{count}} table",
+    "tables_other": "{{count}} tables"
+  },
+  "status": {
+    "ok": "Ready",
+    "scanned": "Scanned",
+    "too_large": "Too large",
+    "empty": "Empty",
+    "encrypted": "Locked",
+    "corrupt": "Corrupt"
+  },
+  "statusReason": {
+    "scanned": "No readable text: probably a scanned PDF.",
+    "too_large": "Bigger than the size limit (MAX_FILE_MB).",
+    "empty": "The file is empty.",
+    "encrypted": "The file is password protected.",
+    "corrupt": "The file is damaged or not a real PDF or Excel file."
+  },
+  "progress": {
+    "opening": "Opening the folder…",
+    "uploading_one": "Uploading {{count}} file…",
+    "uploading_other": "Uploading {{count}} files…",
+    "defaultFolder": "Reading the default folder…",
+    "readingFile": "Reading {{name}}…",
+    "indexing": "Building the search index…",
+    "reading": "Reading files…"
+  },
+  "notice": {
+    "ready_one": "{{count}} document ready",
+    "ready_other": "{{count}} documents ready",
+    "failed": "{{ready}}, {{count}} could not be read"
+  },
+  "aiKey": "The AI is not set up: add your GROQ_API_KEY to the .env file, then restart the server.",
+  "empty": {
+    "loadTitle": "Load your project documents",
+    "loadingTitle": "Reading your documents…",
+    "loadText": "Enter a folder path in the sidebar, or drop PDF and Excel files there. Every answer will show its source file and page.",
+    "loadingText": "This can take a minute the first time, while the search index is built.",
+    "openDocuments": "Open documents",
+    "askTitle_one": "Ask anything about your {{count}} document",
+    "askTitle_other": "Ask anything about your {{count}} documents",
+    "subtitle": "Answers come only from your files, with the file and page for every fact."
+  },
+  "suggestions": {
+    "cost": "List all cost items above SAR 1 million",
+    "scope": "Summarize the scope of work",
+    "dates": "Extract all dates and deliverables",
+    "totals": "What is the total of each BOQ?"
+  },
+  "chat": {
+    "placeholder": "Ask a question… (Shift+Enter for a new line)",
+    "noDocumentsHint": "Load a folder with PDF or Excel files to start",
+    "readingHint": "Reading your documents…",
+    "question": "Question",
+    "send": "Send question",
+    "stop": "Stop answering",
+    "stopTitle": "Stop answering (Esc)"
+  },
+  "answer": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "askAgain": "Ask again",
+    "sources": "Sources",
+    "howFound_one": "How I found this ({{count}} step)",
+    "howFound_other": "How I found this ({{count}} steps)",
+    "seeSource": "See {{document}}, {{location}}."
+  },
+  "table": {
+    "total_one": "Total ({{count}} row)",
+    "total_other": "Total ({{count}} rows)",
+    "rows_one": "{{count}} row",
+    "rows_other": "{{count}} rows",
+    "showing": "Showing {{shown}} of {{total}} rows",
+    "showAll": "Show all",
+    "exportCsv": "Export CSV"
+  },
+  "thinking": {
+    "step1": "Reading the question",
+    "step2": "Searching documents",
+    "step3": "Reading tables",
+    "step4": "Checking the numbers",
+    "step5": "Writing the answer",
+    "slow": "free AI tier, waiting for its rate limit"
+  },
+  "stopped": { "text": "You stopped this answer." },
+  "error": { "tryAgain": "Try again" },
+  "errors": {
+    "SERVER_UNREACHABLE": "The server is not running. Start it with scripts/start, then try again.",
+    "STOPPED": "Stopped.",
+    "FOLDER_NOT_FOUND": "This folder does not exist. Check the path and try again.",
+    "FOLDER_EMPTY": "There are no PDF or Excel files in this folder.",
+    "NO_DOCUMENTS_LOADED": "Load a folder with PDF or Excel files first.",
+    "AI_UNAVAILABLE": "The AI is not available: check GROQ_API_KEY in .env and your internet connection.",
+    "AI_RATE_LIMITED": "The free AI limit is reached for now. Wait a few minutes and try again.",
+    "INVALID_REQUEST": "The request is not valid. Check what you typed and try again.",
+    "INTERNAL_ERROR": "Something went wrong on the server. Please try again."
+  }
+}
