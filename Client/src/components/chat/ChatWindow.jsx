@@ -2,10 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import AgentMessage from "./AgentMessage";
+import OutOfScopeMessage from "./OutOfScopeMessage";
 import EmptyState from "./EmptyState";
 import ErrorMessage from "./ErrorMessage";
 import ThinkingIndicator from "./ThinkingIndicator";
 import UserMessage from "./UserMessage";
+
+const FIXED_REPLY_KINDS = ["out_of_scope", "greeting"];
 
 export default function ChatWindow({ chat, documents, onAskAgain, onOpenMenu }) {
   const end = useRef(null);
@@ -32,6 +35,9 @@ export default function ChatWindow({ chat, documents, onAskAgain, onOpenMenu }) 
               return (
                 <ErrorMessage key={message.id} text={message.text} onRetry={() => chat.retry(message.id)} />
               );
+            }
+            if (FIXED_REPLY_KINDS.includes(message.answer.kind)) {
+              return <OutOfScopeMessage key={message.id} answer={message.answer} onAsk={chat.send} />;
             }
             return (
               <AgentMessage
