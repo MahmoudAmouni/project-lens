@@ -67,6 +67,7 @@ def test_router_keeps_the_script_when_the_model_names_the_wrong_one():
     assert checked_style("en", "ar-lb") == "ar-lb"  # Arabic letters cannot be English
     assert checked_style("ar", "arabizi") == "arabizi"  # Latin letters cannot be Arabic script
     assert checked_style("ar-lb", "ar") == "ar-lb"  # same script: trust the model
+    assert checked_style("ar", "ar-lb") == "ar-lb"  # Lebanese words (شو، يلي) are a sure sign
     assert checked_style("klingon", "en") == "en"
 
 
@@ -77,12 +78,12 @@ def test_router_falls_back_when_the_model_fails_or_talks_nonsense():
 
 
 def test_notes_ask_for_the_style_and_both_languages():
-    route = Route(style="arabizi", intent="document_question", question_en="Items above 1 million?",
-                  question_ar="البنود فوق مليون؟", search_terms=["amount", "المبلغ"])  # fmt: skip
-    text = question_with_notes("shu l items yalli aktar men malyon?", route)
-    assert text.startswith("shu l items yalli aktar men malyon?")
-    assert "Latin letters (Arabizi)" in text and "In Arabic: البنود فوق مليون؟" in text
-    assert "English AND the Arabic version" in text and "amount, المبلغ" in text
+    route = Route(style="arabizi", intent="document_question", question_en="Summarize the contract scope",
+                  question_ar="لخص نطاق العقد", search_terms=["scope", "نطاق العمل"])  # fmt: skip
+    text = question_with_notes("la5asli l scope of work bel contract", route)
+    assert text.startswith("la5asli l scope of work bel contract")
+    assert "Latin letters (Arabizi)" in text and "In Arabic: لخص نطاق العقد" in text
+    assert "English AND the Arabic version" in text and "scope, نطاق العمل" in text
 
 
 def test_router_sees_the_loaded_files_and_judges_the_new_message_only():

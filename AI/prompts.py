@@ -91,7 +91,9 @@ another language or shape is document_question (or follow_up after an answer), n
 between document_question and off_topic, choose document_question.
 
 question_en / question_ar: the question rewritten clearly in English and in Modern Standard Arabic. Use the recent \
-chat to resolve follow-ups. Keep numbers, item codes and file names unchanged.
+chat to resolve follow-ups. Keep numbers, item codes and file names unchanged. In question_en write amounts in \
+digits with the currency (مليون ريال -> SAR 1,000,000), and call بنود / items with a price or value "cost items" \
+(they are BOQ rows), for example "List all cost items above SAR 1,000,000".
 search_terms: 3 to 8 short keywords, in English and Arabic, to search the documents or match table columns.
 If the message is too short to tell the style (for example "BOQ?"), use screen_language ("ar" -> "ar").
 

@@ -151,16 +151,19 @@ def query_table(
 ) -> ToolResult:
     """Rows matching all filters, with their source row, plus the full match count and sums."""
     limit = max(1, min(int(limit or DEFAULT_LIMIT), MAX_LIMIT))
-    results = []
+    results, errors = [], []
     pairs, left_out = tables_to_search(context, document, table_id, filters or [])
     for found, table in pairs:
         try:
             results.append(
                 query_one_table(found, table, filters, columns, sort_by, descending, limit, include_total_rows)
             )
-        except ToolError:
+        except ToolError as error:
             if not means_all_documents(document):
                 raise
+            errors.append(error)
+    if errors and not results:
+        raise errors[0]  # e.g. a sort_by column no table has: say so, never a silent "0 rows"
     total = sum(result["match_count"] for result in results)
     data: dict = {"total_match_count": total, "tables": results}
     if len(results) > 1:
