@@ -19,3 +19,7 @@ class ToolCallFormatError(Exception):
 
 class RequestTooLargeError(Exception):
     """One request is bigger than the per-minute token limit; the agent shrinks old results and retries."""
+
+
+class QuestionStopped(Exception):
+    """The user pressed Stop (the browser hung up); the agent ends without an answer."""
