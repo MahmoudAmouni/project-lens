@@ -4,23 +4,28 @@ import re
 
 import pandas as pd
 
+from AI.language.arabic_normalizer import money_value, normalize_arabic
 from AI.tools.lookup import find_column, require_column
 from AI.tools.tool_context import TableLike, ToolError
 
 NUMBER_OPERATORS = {">", ">=", "<", "<="}
 OPERATORS = NUMBER_OPERATORS | {"=", "!=", "contains"}
+CURRENCY = re.compile(r"sar|usd|eur|aed|\$|ريالا|ريال|ر\.س|دولار")  # longer words first
 SUFFIXES = {"k": 1e3, "m": 1e6, "mn": 1e6, "million": 1e6, "b": 1e9, "bn": 1e9, "billion": 1e9}
 
 
 def to_number(value: object) -> float:
-    """1000000, "1,000,000", "SAR 1M" or "1.5 million" -> a number. ToolError when it is not one."""
+    """1000000, "1,000,000", "SAR 1M", "1.5 million", "مليون ريال" or "٢ مليون" -> a number. ToolError otherwise."""
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return float(value)
-    text = re.sub(r"(sar|usd|eur|aed|\$|,|\s)", "", str(value).lower())
-    match = re.fullmatch(r"(-?\d+(?:\.\d+)?)([a-z]*)", text)
-    if not match or (match.group(2) and match.group(2) not in SUFFIXES):
+    text = CURRENCY.sub("", normalize_arabic(str(value))).replace(",", "").strip()
+    match = re.fullmatch(r"(-?\d+(?:\.\d+)?)\s*([a-z]*)", text)
+    if match and (not match.group(2) or match.group(2) in SUFFIXES):
+        return float(match.group(1)) * SUFFIXES.get(match.group(2), 1)
+    money = money_value(text)
+    if money is None:
         raise ToolError(f"'{value}' is not a number.")
-    return float(match.group(1)) * SUFFIXES.get(match.group(2), 1)
+    return money
 
 
 def column_as_numbers(series: pd.Series) -> pd.Series:
