@@ -5,15 +5,15 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, shorten_old_results
-from AI.errors import RequestTooLargeError, ToolCallFormatError
+from AI.errors import QuestionStopped, RequestTooLargeError, ToolCallFormatError
 from AI.guards.answer_check import check_answer, sources_from_tool
 from AI.language.replies import example_questions, fixed_reply
 from AI.llm_client import LLMReply
+from AI.messages import assistant_message, build_messages, summary_messages
 from AI.prompts import (
     BROKEN_TOOL_CALL_PROMPT,
     FORCE_ANSWER_PROMPT,
     SUBMIT_REMINDER_PROMPT,
-    SYSTEM_PROMPT,
     TOO_MANY_SEARCHES_PROMPT,
 )
 from AI.question_notes import question_with_notes
@@ -24,10 +24,8 @@ from AI.tools.registry import SUBMIT_ONLY_SCHEMAS, TOOL_SCHEMAS
 from AI.tools.tool_context import DocumentLike, FinalAnswer, ToolContext
 
 MAX_TOOL_ROUNDS = 10
-HISTORY_MESSAGES = 6
 logger = logging.getLogger("projectlens")
 FORCE_SUBMIT = {"type": "function", "function": {"name": "submit_answer"}}
-SUMMARY_EXCERPT_CHARS = 600
 SEARCHES_BEFORE_REMINDER = 4  # then the model is told once to answer with what it has
 
 
@@ -52,40 +50,6 @@ class AgentAnswer:
         return self
 
 
-def build_messages(question: str, history: list[dict] | None, overview: str = "") -> list[dict]:
-    """System prompt (with the list of loaded files) + the last chat messages + the new question."""
-    recent = [
-        {"role": item["role"], "content": str(item["content"])}
-        for item in (history or [])[-HISTORY_MESSAGES:]
-        if item.get("role") in ("user", "assistant") and item.get("content")
-    ]
-    system = SYSTEM_PROMPT + (f"\n\nLoaded files:\n{overview}" if overview else "")
-    return [{"role": "system", "content": system}, *recent, {"role": "user", "content": question}]
-
-
-def assistant_message(reply: LLMReply) -> dict:
-    """The model's tool-call turn, in the format Groq expects back."""
-    return {
-        "role": "assistant",
-        "content": reply.content or None,
-        "tool_calls": [
-            {"id": call.id, "type": "function", "function": {"name": call.name, "arguments": call.arguments}}
-            for call in reply.tool_calls
-        ],
-    }
-
-
-def summary_messages(messages: list[dict], steps: list[str]) -> list[dict]:
-    """A tiny request: the question, what was done, and short excerpts of the last tool results."""
-    question = next(m["content"] for m in reversed(messages) if m["role"] == "user")
-    excerpts = [m["content"][:SUMMARY_EXCERPT_CHARS] for m in messages if m["role"] == "tool"][-3:]
-    notes = "\n".join(["Steps: " + "; ".join(steps), *excerpts])
-    return [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"{question}\n\nWhat you found so far:\n{notes}\n\n{FORCE_ANSWER_PROMPT}"},
-    ]
-
-
 class Agent:
     def __init__(
         self, llm, documents: Sequence[DocumentLike], vector_store=None, router: Router | None = None,
@@ -94,14 +58,36 @@ class Agent:
         self.llm = llm
         self.scope_mode = scope_mode  # "strict": off-topic questions get a fixed refusal; "relaxed": the agent tries
         self.consulted: list[dict] = []  # document locations the tools returned, for the answer check
+        self.should_stop = None  # set during one question by ask()
         self.router = router or Router()  # Router() alone = the fail-safe style check, no AI call
         self.context = ToolContext(documents=documents, vector_store=vector_store)
         self.overview = document_overview(documents)
         self.seen_calls: set[tuple[str, str]] = set()
         self.search_reminder_sent = False
 
-    def ask(self, question: str, history: list[dict] | None = None, ui_language: str | None = None) -> AgentAnswer:
+    def ask(
+        self, question: str, history: list[dict] | None = None, ui_language: str | None = None, should_stop=None
+    ) -> AgentAnswer:
+        """Answer one question. `should_stop()` returning True (the user pressed Stop) raises QuestionStopped."""
+        self.set_stop_check(should_stop)
+        try:
+            return self.route_and_answer(question, history, ui_language)
+        finally:
+            self.set_stop_check(None)
+
+    def set_stop_check(self, should_stop) -> None:
+        self.should_stop = should_stop
+        for llm in (self.llm, self.router.llm):
+            if llm is not None:
+                llm.should_stop = should_stop  # so long rate-limit waits end at once too
+
+    def check_stop(self) -> None:
+        if self.should_stop and self.should_stop():
+            raise QuestionStopped("Stopped by the user.")
+
+    def route_and_answer(self, question: str, history: list[dict] | None, ui_language: str | None) -> AgentAnswer:
         route = self.router.route(question, history, ui_language, self.overview)
+        self.check_stop()
         if route.intent == "greeting":
             return self.fixed_answer("greeting", route.style, "Greeting: answered without searching")
         if route.intent == "injection" or (route.intent == "off_topic" and self.scope_mode == "strict"):
@@ -124,6 +110,7 @@ class Agent:
         self.seen_calls: set[tuple[str, str]] = set()  # to stop exact repeats of a tool call
         self.search_reminder_sent = False
         for _ in range(MAX_TOOL_ROUNDS):
+            self.check_stop()
             shorten_old_results(messages)
             fit_to_budget(messages, TOOL_SCHEMAS)
             try:
