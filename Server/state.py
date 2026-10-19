@@ -101,10 +101,10 @@ class AppState:
             )
         return self.agent
 
-    def ask(self, question: str, history: list[dict], ui_language: str | None = None) -> AgentAnswer:
+    def ask(self, question: str, history: list[dict], ui_language: str | None = None, should_stop=None) -> AgentAnswer:
         agent = self.get_agent()
         with self._chat_lock:
-            return agent.ask(question, history, ui_language)
+            return agent.ask(question, history, ui_language, should_stop)
 
     def load_on_start(self) -> None:
         """Load DOCS_FOLDER from .env in the background, so the server starts at once."""
