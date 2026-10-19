@@ -83,3 +83,12 @@ def test_notes_ask_for_the_style_and_both_languages():
     assert text.startswith("shu l items yalli aktar men malyon?")
     assert "Latin letters (Arabizi)" in text and "In Arabic: البنود فوق مليون؟" in text
     assert "English AND the Arabic version" in text and "amount, المبلغ" in text
+
+
+def test_router_sees_the_loaded_files_and_judges_the_new_message_only():
+    llm = JsonLLM({"style": "en", "intent": "off_topic"})
+    history = [{"role": "user", "content": "List the BOQ items"}, {"role": "assistant", "content": "18 items..."}]
+    Router(llm).route("hi, tell me about cars", history, "en", "- BOQ_Phase1.xlsx: table 'BOQ'")
+    system, user = llm.messages[0]["content"], llm.messages[1]["content"]
+    assert "NEW message only" in system
+    assert '"loaded_files": "- BOQ_Phase1.xlsx' in user and '"recent_chat"' in user
