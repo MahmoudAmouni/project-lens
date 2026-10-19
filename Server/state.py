@@ -7,6 +7,7 @@ from pathlib import Path
 from AI.agent import Agent, AgentAnswer
 from AI.llm_client import LLMClient
 from AI.rag.vector_store import VectorStore
+from AI.router import Router
 from Server.config import Settings, project_path
 from Server.errors import folder_empty, folder_not_found, no_documents_loaded
 from Server.ingestion.folder_loader import load_folder
@@ -21,6 +22,15 @@ def clean_folder_path(text: str) -> str:
     return project_path(text.strip().strip('"').strip("'"))
 
 
+def make_router(settings: Settings) -> Router:
+    """The router waits at most a few seconds for a rate limit, then falls back to the script check."""
+    main, *backups = [name.strip() for name in settings.router_model.split(",") if name.strip()] or [""]
+    if not main:
+        return Router()
+    llm = LLMClient(settings.groq_api_key, main, ",".join(backups), reasoning_effort="low", max_wait_seconds=10)
+    return Router(llm)
+
+
 class AppState:
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -28,6 +38,7 @@ class AppState:
         self.vector_store: VectorStore | None = None
         self.agent: Agent | None = None
         self.llm = None  # created on the first question, so a missing key never blocks loading files
+        self.router: Router | None = None
         self.use_search = True  # tests switch this off to skip embedding
         self.loading_folder: str | None = None
         self.loading_step: str | None = None  # "Reading BOQ.xlsx", shown in the Client while a folder loads
@@ -83,8 +94,9 @@ class AppState:
         if self.llm is None:
             settings = self.settings
             self.llm = LLMClient(settings.groq_api_key, settings.model, settings.fallback_model)
+            self.router = make_router(settings)
         if self.agent is None:
-            self.agent = Agent(self.llm, self.folder.documents, self.vector_store)
+            self.agent = Agent(self.llm, self.folder.documents, self.vector_store, self.router)
         return self.agent
 
     def ask(self, question: str, history: list[dict]) -> AgentAnswer:
