@@ -8,6 +8,7 @@ from AI.agent import Agent, AgentAnswer
 from AI.llm_client import LLMClient
 from AI.rag.vector_store import VectorStore
 from AI.router import Router
+from AI.usage_tracker import UsageTracker
 from Server.config import Settings, project_path
 from Server.errors import folder_empty, folder_not_found, no_documents_loaded
 from Server.ingestion.folder_loader import load_folder
@@ -22,12 +23,14 @@ def clean_folder_path(text: str) -> str:
     return project_path(text.strip().strip('"').strip("'"))
 
 
-def make_router(settings: Settings) -> Router:
+def make_router(settings: Settings, usage: UsageTracker) -> Router:
     """The router waits at most a few seconds for a rate limit, then falls back to the script check."""
     main, *backups = [name.strip() for name in settings.router_model.split(",") if name.strip()] or [""]
     if not main:
         return Router()
-    llm = LLMClient(settings.groq_api_key, main, ",".join(backups), reasoning_effort="low", max_wait_seconds=10)
+    llm = LLMClient(
+        settings.groq_api_key, main, ",".join(backups), reasoning_effort="low", max_wait_seconds=10, usage=usage
+    )
     return Router(llm)
 
 
@@ -39,6 +42,7 @@ class AppState:
         self.agent: Agent | None = None
         self.llm = None  # created on the first question, so a missing key never blocks loading files
         self.router: Router | None = None
+        self.usage = UsageTracker(settings.usage_file)  # shared by the agent and the router: same Groq limits
         self.use_search = True  # tests switch this off to skip embedding
         self.loading_folder: str | None = None
         self.loading_step: str | None = None  # "Reading BOQ.xlsx", shown in the Client while a folder loads
@@ -91,19 +95,36 @@ class AppState:
             raise no_documents_loaded()
         if self.readable_count == 0:
             raise no_documents_loaded("None of the files in this folder could be read.")
-        if self.llm is None:
-            settings = self.settings
-            self.llm = LLMClient(settings.groq_api_key, settings.model, settings.fallback_model)
-            self.router = make_router(settings)
+        self.get_llm()
         if self.agent is None:
             self.agent = Agent(
                 self.llm, self.folder.documents, self.vector_store, self.router, self.settings.scope_mode
             )
         return self.agent
 
-    def ask(self, question: str, history: list[dict], ui_language: str | None = None, should_stop=None) -> AgentAnswer:
+    def get_llm(self) -> LLMClient:
+        """Made on first use, so a missing key never blocks loading files. Raises AIUnavailableError."""
+        if self.llm is None:
+            settings = self.settings
+            self.llm = LLMClient(settings.groq_api_key, settings.model, settings.fallback_model, usage=self.usage)
+            self.router = make_router(settings, self.usage)
+        return self.llm
+
+    def models_status(self, refresh: bool = False) -> list[dict]:
+        """The models the user can pick, with what is left of their free limits."""
+        llm = self.get_llm()
+        if refresh and not self._chat_lock.locked():  # a question in progress already updates the numbers
+            for model in llm.configured_models:
+                llm.check(model)
+        return [self.usage.snapshot(model) for model in llm.configured_models]
+
+    def ask(
+        self, question: str, history: list[dict], ui_language: str | None = None, should_stop=None,
+        model: str | None = None,
+    ) -> AgentAnswer:  # fmt: skip
         agent = self.get_agent()
         with self._chat_lock:
+            self.llm.prefer(model)
             return agent.ask(question, history, ui_language, should_stop)
 
     def load_on_start(self) -> None:
