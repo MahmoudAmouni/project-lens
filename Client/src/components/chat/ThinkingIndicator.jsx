@@ -1,18 +1,14 @@
 // Shown while the agent works: animated dots, rotating labels and the seconds waited (answers can take a while).
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-const LABELS = [
-  "Reading the question",
-  "Searching documents",
-  "Reading tables",
-  "Checking the numbers",
-  "Writing the answer",
-];
+const LABELS = ["thinking.step1", "thinking.step2", "thinking.step3", "thinking.step4", "thinking.step5"];
 const LABEL_EVERY_SECONDS = 3;
 const SLOW_AFTER_SECONDS = 25;
 
 export default function ThinkingIndicator() {
+  const { t } = useTranslation();
   const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
@@ -20,7 +16,7 @@ export default function ThinkingIndicator() {
     return () => clearInterval(timer);
   }, []);
 
-  const label = LABELS[Math.min(Math.floor(seconds / LABEL_EVERY_SECONDS), LABELS.length - 1)];
+  const label = t(LABELS[Math.min(Math.floor(seconds / LABEL_EVERY_SECONDS), LABELS.length - 1)]);
   return (
     <div
       className="flex animate-fade-in items-center gap-3 rounded-card border border-line bg-surface px-4 py-3"
@@ -36,8 +32,8 @@ export default function ThinkingIndicator() {
         ))}
       </span>
       <span className="text-ink-quiet">{label}…</span>
-      <span className="numbers ml-auto text-xs text-ink-quiet/70">
-        {seconds}s{seconds >= SLOW_AFTER_SECONDS && " · free AI tier, waiting for its rate limit"}
+      <span className="numbers ms-auto text-xs text-ink-quiet/70">
+        {seconds}s{seconds >= SLOW_AFTER_SECONDS && ` · ${t("thinking.slow")}`}
       </span>
     </div>
   );
