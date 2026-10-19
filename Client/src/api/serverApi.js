@@ -61,7 +61,13 @@ export function uploadFiles(files) {
   return request("/documents/upload", { method: "POST", body: form });
 }
 
-/** `signal` (from an AbortController) cancels the question: the Server stops the agent when it sees that. */
-export function askQuestion(question, history, uiLanguage, signal) {
-  return postJson("/chat", { question, history, ui_language: uiLanguage }, signal);
+/** `signal` (from an AbortController) cancels the question: the Server stops the agent when it sees that.
+ * `model` is the AI model the user picked (empty = the Server's default); the others stay as backups. */
+export function askQuestion(question, history, uiLanguage, model, signal) {
+  return postJson("/chat", { question, history, ui_language: uiLanguage, model: model || null }, signal);
+}
+
+/** The AI models to pick from, with what is left of their free limits. `refresh` asks Groq for fresh numbers. */
+export function getModels(refresh = false) {
+  return request(`/models${refresh ? "?refresh=true" : ""}`);
 }
