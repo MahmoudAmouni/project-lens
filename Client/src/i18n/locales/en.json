@@ -3,9 +3,19 @@
   "topBar": {
     "title": "Ask your documents",
     "openMenu": "Open documents",
-    "model": "Main AI model",
     "clear": "Clear",
     "clearChat": "Clear chat"
+  },
+  "models": {
+    "title": "AI model",
+    "pick": "Choose the AI model",
+    "refresh": "Check the limits again",
+    "percentLeft": "{{percent}}% left",
+    "tokensLeft": "About {{left}} of {{limit}} tokens left today",
+    "requestsLeft": "{{count}} requests left today",
+    "minuteLeft": "{{count}} tokens this minute",
+    "limited": "Limit reached: free again in about {{minutes}} min",
+    "note": "Free Groq limits, per model. Requests and tokens per minute come from Groq; tokens today are counted by the app and corrected when Groq reports a limit. If the chosen model runs out, another one answers."
   },
   "theme": { "toDark": "Switch to dark mode", "toLight": "Switch to light mode" },
   "language": { "switch": "التبديل إلى العربية" },
