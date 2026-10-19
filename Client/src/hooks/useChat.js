@@ -14,12 +14,15 @@ const screenLanguage = () => (document.documentElement.lang === "ar" ? "ar" : "e
 const newId = () => nextId++;
 
 /** Messages look like: { id, role: "user" | "agent" | "error" | "stopped", text, answer?, question? } */
-export function useChat() {
+/** `model` is the AI model the user picked; each question is sent with it. */
+export function useChat(model = "") {
   const [messages, setMessages] = useState(savedMessages);
   const [sending, setSending] = useState(false);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const controller = useRef(null);
+  const modelRef = useRef(model);
+  modelRef.current = model;
 
   useEffect(() => saveChat(messages), [messages]);
 
@@ -33,7 +36,13 @@ export function useChat() {
     setSending(true);
     controller.current = new AbortController();
     try {
-      const answer = await askQuestion(text, past, screenLanguage(), controller.current.signal);
+      const answer = await askQuestion(
+        text,
+        past,
+        screenLanguage(),
+        modelRef.current,
+        controller.current.signal,
+      );
       setMessages((current) => [
         ...current,
         { id: newId(), role: "agent", text: answer.answer, answer, question: text },
