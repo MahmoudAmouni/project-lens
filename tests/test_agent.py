@@ -56,13 +56,21 @@ def test_unknown_tool_name_lists_the_real_tools(documents):
     assert "Tools: list_documents" in llm.requests[1]["messages"][-1]["content"]
 
 
-def test_plain_text_reply_gets_one_reminder_then_is_used(documents):
-    llm = FakeLLM([text_reply("I can only answer from the loaded documents.")])
-    answer = Agent(llm, documents).ask("hi")
-    assert answer.answer == "I can only answer from the loaded documents."
-    assert answer.sources == []
-    assert len(llm.requests) == 2
+def test_plain_text_reply_without_any_source_becomes_not_found(documents):
+    llm = FakeLLM([text_reply("The contract is worth a lot.")])
+    answer = Agent(llm, documents).ask("Summarize the contract")
+    assert answer.kind == "not_found"
+    assert answer.answer == "I couldn't find this in the loaded documents."
+    assert len(llm.requests) == 2  # one reminder to call submit_answer first
     assert "call submit_answer" in llm.requests[1]["messages"][-1]["content"]
+
+
+def test_plain_text_after_reading_keeps_its_text_and_gets_the_read_pages_as_sources(documents):
+    read = tool_reply(call("read_document", {"document": "Contract_A.pdf", "start_page": 4, "end_page": 4}))
+    llm = FakeLLM([read, text_reply("Retention is **5%**."), text_reply("Retention is **5%**.")])
+    answer = Agent(llm, documents).ask("What is the retention?")
+    assert (answer.kind, answer.answer) == ("answer", "Retention is **5%**.")
+    assert answer.sources == [{"document": "Contract_A.pdf", "location": "page 4", "snippet": ""}]
 
 
 def test_plain_text_then_submit_gives_structured_answer(documents):
