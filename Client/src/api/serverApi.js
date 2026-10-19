@@ -18,7 +18,8 @@ async function request(path, options = {}) {
   let response;
   try {
     response = await fetch(`/api${path}`, options);
-  } catch {
+  } catch (err) {
+    if (err.name === "AbortError") throw new ServerError("STOPPED", "Stopped."); // the user pressed Stop
     throw unreachable();
   }
   const body = await response.json().catch(() => null);
@@ -33,11 +34,12 @@ async function request(path, options = {}) {
   return body;
 }
 
-function postJson(path, data) {
+function postJson(path, data, signal) {
   return request(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+    signal,
   });
 }
 
@@ -59,6 +61,7 @@ export function uploadFiles(files) {
   return request("/documents/upload", { method: "POST", body: form });
 }
 
-export function askQuestion(question, history, uiLanguage) {
-  return postJson("/chat", { question, history, ui_language: uiLanguage });
+/** `signal` (from an AbortController) cancels the question: the Server stops the agent when it sees that. */
+export function askQuestion(question, history, uiLanguage, signal) {
+  return postJson("/chat", { question, history, ui_language: uiLanguage }, signal);
 }
