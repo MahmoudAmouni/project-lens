@@ -11,27 +11,25 @@ import Toast from "./components/layout/Toast";
 import TopBar from "./components/layout/TopBar";
 import { useChat } from "./hooks/useChat";
 import { useDocuments } from "./hooks/useDocuments";
+import { useModels } from "./hooks/useModels";
 import { useTheme } from "./hooks/useTheme";
 
 export default function App() {
   const { t } = useTranslation();
   const documents = useDocuments();
   const { theme, toggle: toggleTheme } = useTheme();
-  const chat = useChat();
-  const [model, setModel] = useState("");
+  const models = useModels();
+  const chat = useChat(models.current);
   const [aiKeySet, setAiKeySet] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [prefill, setPrefill] = useState(null);
 
-  // The model name and whether the AI key is set; retried while the Server is still starting.
+  // Whether the AI key is set; retried while the Server is still starting.
   useEffect(() => {
     let timer;
     const check = (triesLeft) =>
       getHealth()
-        .then((health) => {
-          setModel(health.model);
-          setAiKeySet(health.ai_key_set);
-        })
+        .then((health) => setAiKeySet(health.ai_key_set))
         .catch(() => {
           if (triesLeft > 0) timer = setTimeout(() => check(triesLeft - 1), 2000);
         });
@@ -52,6 +50,12 @@ export default function App() {
     [documents],
   );
 
+  // After every answer, show what is left of the free limits.
+  const { reload: reloadModels } = models;
+  useEffect(() => {
+    if (!chat.sending) reloadModels();
+  }, [chat.sending, reloadModels]);
+
   const noDocuments = documents.readable_count === 0;
   const hint = documents.loading ? t("chat.readingHint") : t("chat.noDocumentsHint");
 
@@ -64,7 +68,7 @@ export default function App() {
       />
       <main className="flex min-w-0 flex-1 flex-col">
         <TopBar
-          model={model}
+          models={models}
           theme={theme}
           onToggleTheme={toggleTheme}
           canClear={chat.messages.length > 0}
