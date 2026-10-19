@@ -10,6 +10,7 @@ from AI.language.glossary import ARABIZI, LEBANESE_MARKERS
 
 ARABIC_CHAR = re.compile(f"[{ARABIC_LETTERS}]")
 LATIN_CHAR = re.compile("[a-zA-Z]")
+ARABIC_PUNCTUATION = re.compile("[،؛؟٪-٭۔]")  # ، ؛ ؟ ٪ ٫ ٬ ٭ ۔
 DIGIT_AS_LETTER = re.compile(r"^[a-z]*[235789][a-z]+$|^[a-z]+[235789][a-z]*$")  # 3a2ed, la5asli, mar7aba
 NUMBER_WITH_UNIT = re.compile(r"^\d+(st|nd|rd|th|m|mm|cm|km|m2|m3|k|kg|t|mn|bn|kva|tr)$")  # "2nd", "5m": English
 NORMALIZED_MARKERS = {normalize_arabic(word) for word in LEBANESE_MARKERS}
@@ -17,12 +18,18 @@ GREETINGS = {
     "hi", "hello", "hey", "thanks", "thank you", "good morning", "who are you", "what can you do",
     "marhaba", "mar7aba", "ahla", "ahlan", "kifak", "kifik", "salam", "merci", "shukran", "yislamo",
     "مرحبا", "اهلا", "أهلا", "السلام عليكم", "شكرا", "كيفك", "مين انت", "من انت", "صباح الخير",
+    # asking the AI its name: the greeting reply says it ("I'm ProjectLens" / "أنا بصيرة")
+    "what is your name", "what s your name", "whats your name", "your name", "who r u", "who are u",
+    "what are you called", "what should i call you",
+    "shu esmak", "shu ismak", "shu esmik", "shou esmak", "chou esmak", "esmak", "ismak", "min enta", "meen enta",
+    "شو اسمك", "ما اسمك", "ما هو اسمك", "اسمك", "شو اسمك انت", "اسمك شو", "مين حضرتك", "من أنت",
 }  # fmt: skip
 NORMALIZED_GREETINGS = {normalize_arabic(text) for text in GREETINGS}
 
 
 def words_of(text: str) -> list[str]:
-    return re.findall(rf"[a-z0-9{ARABIC_LETTERS}]+", normalize_arabic(text))
+    """Words only: Arabic punctuation (؟ ، ؛) sits in the Arabic letter range, so it is removed first."""
+    return re.findall(rf"[a-z0-9{ARABIC_LETTERS}]+", ARABIC_PUNCTUATION.sub(" ", normalize_arabic(text)))
 
 
 def arabizi_score(words: list[str]) -> int:
