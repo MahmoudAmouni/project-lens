@@ -1,5 +1,5 @@
 // i18n setup: English and Arabic screen text. The saved choice first, then the browser's language.
-// Changing the language also sets <html lang dir>, so Arabic flips the whole layout right-to-left.
+// Changing the language also sets <html lang dir> and the tab title, so Arabic flips the whole layout right-to-left.
 
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
@@ -13,6 +13,7 @@ function applyToPage(language) {
   const arabic = language.startsWith("ar");
   document.documentElement.lang = arabic ? "ar" : "en";
   document.documentElement.dir = arabic ? "rtl" : "ltr";
+  document.title = i18n.t("app.title", { lng: arabic ? "ar" : "en" });
 }
 
 i18n
