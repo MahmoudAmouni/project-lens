@@ -7,6 +7,19 @@ import DocumentList from "../documents/DocumentList";
 import DropZone from "../documents/DropZone";
 import FolderLoader from "../documents/FolderLoader";
 
+/** The app name, with its accent word in teal: "Project<Lens>" or "<عدسة> المشروع". */
+function AppName() {
+  const { t } = useTranslation();
+  const [before, after] = t("app.name").split(t("app.nameAccent"));
+  return (
+    <span className="text-lg font-semibold tracking-tight">
+      {before}
+      <span className="text-brand-teal">{t("app.nameAccent")}</span>
+      {after}
+    </span>
+  );
+}
+
 export default function Sidebar({ documents, open, onClose }) {
   const { t } = useTranslation();
   return (
@@ -19,11 +32,9 @@ export default function Sidebar({ documents, open, onClose }) {
           open ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
         }`}
       >
-        <div className="flex items-center gap-2.5 px-1" dir="ltr">
+        <div className="flex items-center gap-2.5 px-1">
           <img src="/logo-light.svg" alt="" className="h-8 w-8" />
-          <span className="text-lg font-semibold tracking-tight">
-            Project<span className="text-brand-teal">Lens</span>
-          </span>
+          <AppName />
           <button
             onClick={onClose}
             className="ms-auto rounded-button p-1.5 hover:bg-brand-navy-light lg:hidden"
