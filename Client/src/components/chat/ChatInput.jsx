@@ -3,10 +3,12 @@
 
 import { SendHorizontal, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const MAX_HEIGHT_PX = 160;
 
 export default function ChatInput({ disabled, disabledHint, sending, onSend, onStop, prefill }) {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const box = useRef(null);
 
@@ -56,16 +58,16 @@ export default function ChatInput({ disabled, disabledHint, sending, onSend, onS
           onChange={(event) => setText(event.target.value)}
           onKeyDown={onKeyDown}
           disabled={disabled}
-          placeholder={disabled ? disabledHint : "Ask a question… (Shift+Enter for a new line)"}
-          aria-label="Question"
+          placeholder={disabled ? disabledHint : t("chat.placeholder")}
+          aria-label={t("chat.question")}
           dir="auto"
           className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent px-2 py-1.5 leading-6 outline-none placeholder:text-ink-quiet/70 disabled:cursor-not-allowed"
         />
         {sending ? (
           <button
             onClick={onStop}
-            aria-label="Stop answering"
-            title="Stop answering (Esc)"
+            aria-label={t("chat.stop")}
+            title={t("chat.stopTitle")}
             className="rounded-button bg-status-error p-2.5 text-white hover:opacity-90"
           >
             <Square size={18} strokeWidth={1.75} fill="currentColor" />
@@ -74,10 +76,10 @@ export default function ChatInput({ disabled, disabledHint, sending, onSend, onS
           <button
             onClick={send}
             disabled={blocked || !text.trim()}
-            aria-label="Send question"
+            aria-label={t("chat.send")}
             className="rounded-button bg-brand-navy p-2.5 text-white hover:bg-brand-navy-light disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <SendHorizontal size={18} strokeWidth={1.75} />
+            <SendHorizontal size={18} strokeWidth={1.75} className="rtl:rotate-180" />
           </button>
         )}
       </div>
