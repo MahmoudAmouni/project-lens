@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getDocuments, getHealth, loadFolder, uploadFiles } from "../api/serverApi";
+import i18n from "../i18n";
 
 const EMPTY = { folder: null, documents: [], skipped: [], readable_count: 0, search_ready: false };
 const PROGRESS_EVERY_MS = 700;
@@ -51,10 +52,9 @@ export function useDocuments() {
     [watchProgress],
   );
 
-  const load = useCallback((path) => run(() => loadFolder(path), "Opening the folder…"), [run]);
+  const load = useCallback((path) => run(() => loadFolder(path), i18n.t("progress.opening")), [run]);
   const upload = useCallback(
-    (files) =>
-      run(() => uploadFiles(files), `Uploading ${files.length} file${files.length === 1 ? "" : "s"}…`),
+    (files) => run(() => uploadFiles(files), i18n.t("progress.uploading", { count: files.length })),
     [run],
   );
 
@@ -70,7 +70,7 @@ export function useDocuments() {
         if (result.loading) {
           setLoading(true);
           const health = await getHealth().catch(() => null);
-          setProgress(health?.loading_step || "Reading the default folder…");
+          setProgress(health?.loading_step || i18n.t("progress.defaultFolder"));
           setTimeout(() => refresh(triesLeft), PROGRESS_EVERY_MS);
         } else {
           setLoading(false);
@@ -96,6 +96,7 @@ export function useDocuments() {
 function loadNotice(result) {
   const ready = result.readable_count;
   const failed = result.documents.length - ready;
-  const text = `${ready} document${ready === 1 ? "" : "s"} ready${failed ? `, ${failed} could not be read` : ""}`;
+  const readyText = i18n.t("notice.ready", { count: ready });
+  const text = failed ? i18n.t("notice.failed", { ready: readyText, count: failed }) : readyText;
   return { text, tone: failed ? "warn" : "ok" };
 }
