@@ -95,8 +95,8 @@ class Router:
         self, question: str, history: list[dict] | None = None, ui_language: str | None = None, overview: str = ""
     ) -> Route:
         fallback = fallback_route(question, ui_language)
-        if self.llm is None:
-            return fallback
+        if self.llm is None or fallback.intent in ("greeting", "injection"):
+            return fallback  # plain greetings and injections are certain without AI: instant, and no tokens used
         messages = [
             {"role": "system", "content": ROUTER_PROMPT},
             {"role": "user", "content": router_message(question, history or [], ui_language, overview)},
