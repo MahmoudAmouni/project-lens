@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-page font-sans text-sm text-ink antialiased;
+  }
+
+  /* Visible keyboard focus everywhere, in the brand teal */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-teal ring-offset-1;
+  }
+}
+
+@layer components {
+  /* Numbers line up in columns */
+  .numbers {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Markdown inside answer cards (no typography plugin: small and explicit) */
+  .answer-markdown {
+    @apply space-y-2 leading-relaxed;
+  }
+  .answer-markdown h1,
+  .answer-markdown h2,
+  .answer-markdown h3 {
+    @apply font-semibold text-brand-navy;
+  }
+  .answer-markdown h1 {
+    @apply text-base;
+  }
+  .answer-markdown ul {
+    @apply list-disc space-y-1 pl-5;
+  }
+  .answer-markdown ol {
+    @apply list-decimal space-y-1 pl-5;
+  }
+  .answer-markdown strong {
+    @apply font-semibold text-ink;
+  }
+  .answer-markdown a {
+    @apply text-brand-teal-dark underline;
+  }
+  .answer-markdown code {
+    @apply rounded bg-page px-1 py-0.5 text-[13px];
+  }
+  .answer-markdown table {
+    @apply my-2 w-full border-collapse text-[13px];
+  }
+  .answer-markdown th,
+  .answer-markdown td {
+    @apply border border-line px-2 py-1 text-left;
+  }
+  .answer-markdown th {
+    @apply bg-page font-semibold;
+  }
+}
