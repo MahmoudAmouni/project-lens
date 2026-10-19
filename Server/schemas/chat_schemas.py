@@ -18,6 +18,7 @@ class ChatRequest(BaseModel):
     )
     history: list[ChatMessage] = Field(default_factory=list)
     ui_language: Literal["en", "ar"] | None = None  # screen language: only a hint for very short questions
+    model: str | None = None  # the model the user picked; the other models stay as backups
 
 
 class TableData(BaseModel):
