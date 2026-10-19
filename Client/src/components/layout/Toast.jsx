@@ -17,7 +17,7 @@ export default function Toast({ notice, onDone }) {
   return (
     <div
       role="status"
-      className="fixed bottom-24 left-1/2 z-40 flex -translate-x-1/2 animate-fade-in items-center gap-2 rounded-card bg-ink px-4 py-2.5 text-white shadow-lg"
+      className="fixed bottom-24 left-1/2 z-40 flex -translate-x-1/2 animate-fade-in items-center gap-2 rounded-card bg-brand-navy px-4 py-2.5 text-white shadow-lg dark:shadow-none"
     >
       <Icon
         size={16}
