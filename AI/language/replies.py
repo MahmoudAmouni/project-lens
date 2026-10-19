@@ -2,11 +2,12 @@
 plus example questions that match the loaded files. Fixed texts are always short, polite and correct."""
 
 GREETING = {
-    "en": "Hello! I answer questions about the loaded project documents, with the file and page for every answer. "
-    "You could ask:",
-    "ar": "مرحباً! أجيب عن الأسئلة المتعلقة بالمستندات المحمّلة، مع ذكر الملف والصفحة لكل إجابة. يمكنك أن تسأل:",
-    "ar-lb": "أهلا! أنا بجاوب عن الملفات يلي حمّلتها، ومع كل جواب بقلّك الملف والصفحة. فيك تسألني مثلاً:",
-    "arabizi": "Ahla! Ana bjeweb 3an l files yalli 7ammaltun, w ma3 kel jaweb b2ellak l file wel page. "
+    "en": "Hello! I'm ProjectLens. I answer questions about the loaded project documents, "
+    "with the file and page for every answer. You could ask:",
+    "ar": "مرحباً! أنا عدسة المشروع. أجيب عن الأسئلة المتعلقة بالمستندات المحمّلة، "
+    "مع ذكر الملف والصفحة لكل إجابة. يمكنك أن تسأل:",
+    "ar-lb": "أهلا! أنا عدسة المشروع، بجاوب عن الملفات يلي حمّلتها، ومع كل جواب بقلّك الملف والصفحة. فيك تسألني مثلاً:",
+    "arabizi": "Ahla! Ana ProjectLens, bjeweb 3an l files yalli 7ammaltun, w ma3 kel jaweb b2ellak l file wel page. "
     "Fik tes2alne masalan:",
 }
 
