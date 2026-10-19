@@ -13,7 +13,12 @@
 - **Every answer has a source**: file + page for PDFs, file + sheet + row for Excel. Click a source to see the quoted text.
 - **Hybrid agent**: semantic + keyword search for text, exact table tools for numbers, a date finder for deadlines and a structured final answer.
 - **Messy real-world tables**: header on row 4, merged cells, money typed as text (`SAR 1,200,000`, `1.2M`, Arabic digits), "Total" rows, BOQ tables that run over several PDF pages, mixed currencies (never added together).
-- **Arabic and English**: questions, documents and answers.
+- **Arabic and English**: questions, documents and answers. The AI replies in the user's own style: English, Modern Standard Arabic, Lebanese Arabic or Arabizi ("shu l items yalli aktar men malyon?"). File names, numbers and item codes are never translated.
+- **Arabic screen**: one click switches the whole app to Arabic, right to left. In Arabic the app is called **بصيرة** ("insight").
+- **Remembers the conversation**: follow-ups like "write those dates in Arabic" reuse the previous answer and its sources. The chat is kept in the browser, so a reload does not lose it.
+- **Stays on topic**: off-topic questions ("tell me about cars") and attempts to change its rules get a short polite refusal with example questions, without spending tokens. Text inside documents is treated as data, never as instructions.
+- **Model picker with free limits**: choose the AI model in the top bar and see how much of its free daily limit is left. Google Gemini can be added as one more choice with a free key.
+- **Stop button, dark mode**, and a terminal version of the same agent.
 
 ## Quick start
 
@@ -96,7 +101,7 @@ flowchart LR
     C -- "/api (JSON)" --> S["Server<br/>FastAPI"]
     S -- "reads files" --> F[("Folder<br/>PDF + Excel")]
     S -- "documents + question" --> A["AI<br/>agent loop + tools"]
-    A -- "tool calling" --> G["Groq LLM<br/>gpt-oss-120b"]
+    A -- "tool calling" --> G["Groq LLM<br/>gpt-oss-120b<br/>(or Gemini, if picked)"]
     A -- "search" --> V[("ChromaDB<br/>local embeddings")]
 ```
 
@@ -105,14 +110,17 @@ flowchart LR
 ```text
 Client/   React app: components/{layout,documents,chat,answer}, hooks, api/serverApi.js
 Server/   FastAPI: routes/, schemas/, ingestion/ (scanner, PDF + Excel readers, table cleaner), cli.py
-AI/       agent.py (the loop), llm_client.py (Groq), prompts.py, tools/ (one file per tool), rag/
+AI/       agent.py (the loop), router.py (style + intent first), llm_client.py (Groq / Gemini), prompts.py,
+          tools/ (one file per tool), rag/, guards/ (answer + injection checks), language/ (styles, fixed replies)
 tests/    pytest suite + sample document generator
 scripts/  setup, start, evaluate (accuracy check against real questions)
 ```
 
 ## How the agent works
 
-The model on Groq decides which tool to call; our code runs the tool on the real data and sends back the result.
+**First, the router.** A small fast model reads the new message (with the recent chat) and returns its writing style (en, ar, ar-lb, arabizi) and intent: a document question, a follow-up, a greeting, off-topic or an attempt to change the rules. Greetings, off-topic questions and injections get fixed replies from `AI/language/replies.py` at once. Plain greetings and obvious injections are caught by code before any AI call, and the router falls back to that check if its model is unavailable.
+
+**Then the agent.** For document questions and follow-ups, the main model decides which tool to call; our code runs the tool on the real data and sends back the result.
 
 | Tool | Used for |
 | --- | --- |
@@ -141,12 +149,13 @@ The model on Groq decides which tool to call; our code runs the tool on the real
 | Money as text, Arabic digits, "150 m" (meters, not millions) | Parsed correctly; item codes like "3.10" stay text |
 | Mixed currencies | Totals per currency, never added together |
 | Answer not in the documents / off-topic question | The agent says so and lists what it searched |
-| Missing or wrong API key, Groq down, rate limits | Clear message in the UI; backup models; waits and retries |
+| Off-topic question or "ignore your rules" (in the chat or inside a document) | Polite refusal with example questions; document text is never followed as instructions |
+| Missing or wrong API key, Groq down, rate limits | Clear message in the UI; backup models; waits and retries; the model picker shows what is left of each free limit |
 
 ## Tests
 
 ```bash
-pytest -q                     # 103 tests, no API cost (a fake LLM drives the agent)
+pytest -q                     # 198 tests, no API cost (a fake LLM drives the agent)
 python -m scripts.evaluate    # 20 real questions through Groq, checked against the documents
 ```
 
@@ -154,7 +163,9 @@ The evaluation writes `docs/accuracy_report.md`. It uses most of one day's free 
 
 ## Groq free tier
 
-The free tier allows about **8,000 tokens per minute and 200,000 tokens per day per model**. One question uses roughly 5,000–20,000 tokens, so answers can take 10–60 seconds while the client waits for the per-minute limit (the UI says so), and a day allows a few dozen questions. A paid Groq key removes the waiting; no code change is needed.
+The free tier allows about **8,000 tokens per minute and 200,000 tokens per day per model**, shared by every key of the same Groq account. One question uses roughly 5,000–20,000 tokens, so answers can take 10–60 seconds while the client waits for the per-minute limit (the UI says so), and a day allows a few dozen questions per model.
+
+The model picker shows, per model, the requests left today and the tokens left this minute (both from Groq) and about how many tokens are left today (counted by the app, and corrected from Groq's own numbers when it reports a limit). When one model runs out, pick another: each has its own daily limit. With a free Google key in `GEMINI_API_KEY`, Gemini 2.5 Flash is one more choice with a separate limit. A paid Groq key removes the waiting; no code change is needed.
 
 ## Limitations and future work
 
