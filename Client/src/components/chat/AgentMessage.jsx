@@ -18,7 +18,7 @@ export default function AgentMessage({ answer, onAskAgain }) {
   }
 
   return (
-    <article className="animate-fade-in space-y-4 rounded-card border border-line bg-surface p-5 shadow-sm">
+    <article className="animate-fade-in space-y-4 rounded-card border border-line bg-surface p-5 shadow-sm dark:shadow-none">
       <div dir="auto" className="answer-markdown">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer.answer}</ReactMarkdown>
       </div>
