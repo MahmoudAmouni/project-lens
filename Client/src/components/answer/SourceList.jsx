@@ -2,9 +2,11 @@
 
 import { FileText, Quote } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { shortLocation } from "../../utils/formatters";
 
 export default function SourceList({ sources }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(null);
   const area = useRef(null);
 
@@ -27,7 +29,7 @@ export default function SourceList({ sources }) {
 
   return (
     <div ref={area} className="space-y-2">
-      <div className="flex flex-wrap gap-1.5" aria-label="Sources">
+      <div className="flex flex-wrap gap-1.5" aria-label={t("answer.sources")}>
         {sources.map((source, index) => (
           <button
             key={`${source.document}-${source.location}-${index}`}
@@ -51,7 +53,8 @@ export default function SourceList({ sources }) {
         <div className="flex animate-fade-in gap-2 rounded-button border border-brand-teal/30 bg-brand-teal-soft/60 px-3 py-2 text-[13px]">
           <Quote size={14} className="mt-0.5 shrink-0 text-brand-teal" aria-hidden="true" />
           <p dir="auto" className="leading-relaxed text-ink">
-            {active.snippet || `See ${active.document}, ${active.location}.`}
+            {active.snippet ||
+              t("answer.seeSource", { document: active.document, location: active.location })}
           </p>
         </div>
       )}
