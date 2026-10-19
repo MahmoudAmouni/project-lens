@@ -4,6 +4,8 @@ An answer without sources gets the sources the agent actually read through its t
 nothing, the answer is replaced with a fixed "not found" reply, so a made-up answer never gets through.
 """
 
+import re
+
 MAX_AUTO_SOURCES = 5
 SNIPPET_CHARS = 160
 
@@ -23,6 +25,27 @@ def sources_from_tool(name: str, data: dict) -> list[dict]:
     if name == "find_dates":
         return [{"document": d["document"], "location": d["location"], "snippet": d["context"][:SNIPPET_CHARS]}
                 for d in data.get("dates", [])[:3]]  # fmt: skip
+    return []
+
+
+HISTORY_SOURCES = re.compile(r"\[Sources: (.+?)\]")
+
+
+def sources_from_history(history: list[dict] | None) -> list[dict]:
+    """Sources the Client wrote under earlier answers ("[Sources: file — place; ...]"), newest answer first.
+    A follow-up about that answer (e.g. "write it in Arabic") may reuse them instead of searching again."""
+    for item in reversed(history or []):
+        if item.get("role") != "assistant":
+            continue
+        match = HISTORY_SOURCES.search(str(item.get("content", "")))
+        if not match:
+            continue
+        sources = []
+        for part in match.group(1).split(";"):
+            document, _, location = part.strip().partition(" — ")
+            if document:
+                sources.append({"document": document.strip(), "location": location.strip(), "snippet": ""})
+        return sources
     return []
 
 
