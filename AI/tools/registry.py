@@ -125,6 +125,11 @@ TOOLS: dict[str, tuple[Callable, dict]] = {
             "Give the final answer. Always call this last.",
             {
                 "answer": {"type": "string", "description": "Markdown answer, key numbers in **bold**."},
+                "kind": {
+                    "type": "string",
+                    "enum": ["answer", "not_found"],
+                    "description": "not_found when the documents do not contain the answer. Default answer.",
+                },
                 "table_result_id": {
                     "type": "string",
                     "description": "Rows of query_table results exactly as computed: 't1', or 't1,t2' for several.",
