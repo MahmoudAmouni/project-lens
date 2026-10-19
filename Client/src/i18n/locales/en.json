@@ -1,5 +1,5 @@
 {
-  "app": { "title": "ProjectLens" },
+  "app": { "title": "ProjectLens", "name": "ProjectLens", "nameAccent": "Lens" },
   "topBar": {
     "title": "Ask your documents",
     "openMenu": "Open documents",
