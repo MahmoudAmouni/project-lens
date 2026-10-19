@@ -10,12 +10,19 @@ from dataclasses import dataclass, field
 
 import groq
 
-from AI.errors import AIRateLimitedError, AIUnavailableError, RequestTooLargeError, ToolCallFormatError
+from AI.errors import (
+    AIRateLimitedError,
+    AIUnavailableError,
+    QuestionStopped,
+    RequestTooLargeError,
+    ToolCallFormatError,
+)
 
 MAX_TRIES = 3  # for errors other than rate limits (timeouts, Groq server errors)
 MAX_TOTAL_WAIT_SECONDS = 90.0  # rate limits are normal on the free tier: wait up to this long in total
 DEFAULT_WAIT_SECONDS = 5.0
 REQUEST_TIMEOUT_SECONDS = 60.0
+PAUSE_STEP_SECONDS = 0.25
 
 
 @dataclass
@@ -53,6 +60,7 @@ class LLMClient:
         self.limited_until: dict[str, float] = {}  # model -> time its rate limit resets
         self.daily_limit_hit = False
         self.max_wait_seconds = max_wait_seconds  # small for the router: it falls back instead of waiting
+        self.should_stop = None  # set per question: a function that returns True once the user pressed Stop
 
     @property
     def model(self) -> str:
@@ -76,7 +84,7 @@ class LLMClient:
             model, wait = self.pick_model()
             if time.monotonic() + wait > deadline:
                 raise AIRateLimitedError(self.rate_limit_message(wait))
-            time.sleep(wait)
+            self.pause(wait)
             attempt += 1
             try:
                 return self._call(model, messages, tools, tool_choice, json_mode)
@@ -98,12 +106,23 @@ class LLMClient:
                     raise RequestTooLargeError("The request is larger than Groq's free tier allows.") from error
                 if attempt == MAX_TRIES:
                     raise AIUnavailableError("Groq is having problems right now. Try again soon.") from error
-                time.sleep(DEFAULT_WAIT_SECONDS)
+                self.pause(DEFAULT_WAIT_SECONDS)
             except (groq.APITimeoutError, groq.APIConnectionError) as error:
                 if attempt == MAX_TRIES:
                     raise AIUnavailableError("Groq could not be reached. Check your internet connection.") from error
-                time.sleep(DEFAULT_WAIT_SECONDS)
+                self.pause(DEFAULT_WAIT_SECONDS)
         raise AIRateLimitedError("Groq's free rate limit is reached. Wait a minute and try again.")
+
+    def pause(self, seconds: float) -> None:
+        """Wait in small steps, so Stop also ends a long rate-limit wait. Raises QuestionStopped."""
+        end = time.monotonic() + seconds
+        while True:
+            if self.should_stop and self.should_stop():
+                raise QuestionStopped("Stopped by the user.")
+            left = end - time.monotonic()
+            if left <= 0:
+                return
+            time.sleep(min(PAUSE_STEP_SECONDS, left))
 
     def complete_json(self, messages: list[dict]) -> dict:
         """A reply that must be one JSON object (no tools). Raises ValueError when it is not."""
