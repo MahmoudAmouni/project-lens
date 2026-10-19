@@ -1,6 +1,7 @@
 // Puts the sidebar (documents) and the chat together.
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getHealth } from "./api/serverApi";
 import ChatInput from "./components/chat/ChatInput";
 import ChatWindow from "./components/chat/ChatWindow";
@@ -13,6 +14,7 @@ import { useDocuments } from "./hooks/useDocuments";
 import { useTheme } from "./hooks/useTheme";
 
 export default function App() {
+  const { t } = useTranslation();
   const documents = useDocuments();
   const { theme, toggle: toggleTheme } = useTheme();
   const chat = useChat();
@@ -51,9 +53,7 @@ export default function App() {
   );
 
   const noDocuments = documents.readable_count === 0;
-  const hint = documents.loading
-    ? "Reading your documents…"
-    : "Load a folder with PDF or Excel files to start";
+  const hint = documents.loading ? t("chat.readingHint") : t("chat.noDocumentsHint");
 
   return (
     <div className="flex h-screen overflow-hidden">
