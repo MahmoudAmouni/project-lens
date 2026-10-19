@@ -28,6 +28,10 @@ class FakeLLM:
     def __init__(self, script: list):
         self.script = list(script)
         self.requests: list[dict] = []
+        self.preferred: str | None = None
+
+    def prefer(self, model: str | None) -> None:
+        self.preferred = model
 
     def complete(self, messages, tools, tool_choice="auto") -> LLMReply:
         self.requests.append({"messages": list(messages), "tools": tools, "tool_choice": tool_choice})
