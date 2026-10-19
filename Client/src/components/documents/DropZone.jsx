@@ -2,10 +2,12 @@
 
 import { UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const ACCEPT = ".pdf,.xlsx,.xls,.xlsm";
 
 export default function DropZone({ disabled, onFiles }) {
+  const { t } = useTranslation();
   const [dragging, setDragging] = useState(false);
   const picker = useRef(null);
 
@@ -38,7 +40,7 @@ export default function DropZone({ disabled, onFiles }) {
       }`}
     >
       <UploadCloud size={16} aria-hidden="true" />
-      {dragging ? "Drop to upload" : "or drop files here / choose files"}
+      {dragging ? t("sidebar.dropNow") : t("sidebar.drop")}
       <input
         ref={picker}
         type="file"
