@@ -106,7 +106,11 @@ class AppState:
         """Made on first use, so a missing key never blocks loading files. Raises AIUnavailableError."""
         if self.llm is None:
             settings = self.settings
-            self.llm = LLMClient(settings.groq_api_key, settings.model, settings.fallback_model, usage=self.usage)
+            self.llm = LLMClient(
+                settings.groq_api_key, settings.model, settings.fallback_model, usage=self.usage,
+                gemini_api_key=settings.gemini_api_key, gemini_model=settings.gemini_model,
+                gemini_daily_requests=settings.gemini_daily_requests,
+            )  # fmt: skip
             self.router = make_router(settings, self.usage)
         return self.llm
 
