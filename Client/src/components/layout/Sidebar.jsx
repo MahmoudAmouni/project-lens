@@ -9,7 +9,7 @@ export default function Sidebar({ documents, open, onClose }) {
   return (
     <>
       {open && (
-        <div className="fixed inset-0 z-20 bg-ink/40 lg:hidden" onClick={onClose} aria-hidden="true" />
+        <div className="fixed inset-0 z-20 bg-black/50 lg:hidden" onClick={onClose} aria-hidden="true" />
       )}
       <aside
         className={`fixed inset-y-0 left-0 z-30 flex w-[300px] flex-col gap-5 bg-brand-navy p-4 text-white transition-transform lg:static lg:translate-x-0 ${
