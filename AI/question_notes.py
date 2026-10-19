@@ -16,6 +16,8 @@ def question_with_notes(question: str, route: Route) -> str:
     """The user's question, then notes for the agent from the router."""
     notes = [STYLE_INSTRUCTIONS.get(route.style, STYLE_INSTRUCTIONS["en"])]
     notes.append("Never translate file names, numbers or item codes.")
+    if route.intent == "follow_up":
+        notes.append("This is about your previous answer in the chat: reuse its facts and sources if enough.")
     if route.question_en and route.question_en != question:
         notes.append(f"In English: {route.question_en}")
     if route.question_ar and route.question_ar != question:
