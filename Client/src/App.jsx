@@ -79,6 +79,7 @@ export default function App() {
           disabledHint={hint}
           sending={chat.sending}
           onSend={chat.send}
+          onStop={chat.stop}
           prefill={prefill}
         />
       </main>
