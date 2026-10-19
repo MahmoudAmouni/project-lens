@@ -24,7 +24,7 @@ class ScriptedClient(LLMClient):
         self.script = list(script)
         self.models_used: list[str] = []
 
-    def _call(self, model, messages, tools, tool_choice):
+    def _call(self, model, messages, tools, tool_choice, json_mode=False):
         self.models_used.append(model)
         item = self.script.pop(0)
         if isinstance(item, Exception):
@@ -96,3 +96,14 @@ def test_daily_limit_gives_a_clear_message():
     client = ScriptedClient([error, error])
     with pytest.raises(AIRateLimitedError, match="daily token limit"):
         client.complete([], [])
+
+
+def test_complete_json_returns_the_object():
+    client = ScriptedClient([LLMReply(content='{"style": "en", "intent": "greeting"}')])
+    assert client.complete_json([]) == {"style": "en", "intent": "greeting"}
+
+
+def test_complete_json_rejects_non_objects():
+    client = ScriptedClient([LLMReply(content="[1, 2]")])
+    with pytest.raises(ValueError):
+        client.complete_json([])
