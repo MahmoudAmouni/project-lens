@@ -4,6 +4,7 @@ Groq's free tier allows about 8,000 tokens per minute per model. On a rate limit
 other model (it has its own limit); when both are limited we wait as long as Groq asks, then retry.
 """
 
+import json
 import time
 from dataclasses import dataclass, field
 
@@ -34,7 +35,14 @@ class LLMReply:
 class LLMClient:
     """Sends chat messages + tool schemas to Groq and returns the reply."""
 
-    def __init__(self, api_key: str, model: str, fallback_model: str | None = None, reasoning_effort: str = "medium"):
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        fallback_model: str | None = None,
+        reasoning_effort: str = "medium",
+        max_wait_seconds: float = MAX_TOTAL_WAIT_SECONDS,
+    ):
         """`fallback_model` may list several models: "openai/gpt-oss-20b,qwen/qwen3.8-27b"."""
         if not api_key:
             raise AIUnavailableError("Add your GROQ_API_KEY to the .env file, then restart.")
@@ -44,6 +52,7 @@ class LLMClient:
         self.reasoning_effort = reasoning_effort
         self.limited_until: dict[str, float] = {}  # model -> time its rate limit resets
         self.daily_limit_hit = False
+        self.max_wait_seconds = max_wait_seconds  # small for the router: it falls back instead of waiting
 
     @property
     def model(self) -> str:
@@ -55,9 +64,11 @@ class LLMClient:
         model = min(self.models, key=lambda m: self.limited_until.get(m, 0))
         return model, max(0.0, self.limited_until.get(model, 0) - now)
 
-    def complete(self, messages: list[dict], tools: list[dict], tool_choice: str | dict = "auto") -> LLMReply:
+    def complete(
+        self, messages: list[dict], tools: list[dict], tool_choice: str | dict = "auto", json_mode: bool = False
+    ) -> LLMReply:
         """One model call, with retries, waits for rate limits and the backup model."""
-        deadline = time.monotonic() + MAX_TOTAL_WAIT_SECONDS
+        deadline = time.monotonic() + self.max_wait_seconds
         attempt = 0
         while attempt < MAX_TRIES:
             if not self.models:
@@ -68,7 +79,7 @@ class LLMClient:
             time.sleep(wait)
             attempt += 1
             try:
-                return self._call(model, messages, tools, tool_choice)
+                return self._call(model, messages, tools, tool_choice, json_mode)
             except groq.RateLimitError as error:
                 self.limited_until[model] = time.monotonic() + retry_after_seconds(error)
                 self.daily_limit_hit = "per day" in str(error)
@@ -94,20 +105,32 @@ class LLMClient:
                 time.sleep(DEFAULT_WAIT_SECONDS)
         raise AIRateLimitedError("Groq's free rate limit is reached. Wait a minute and try again.")
 
+    def complete_json(self, messages: list[dict]) -> dict:
+        """A reply that must be one JSON object (no tools). Raises ValueError when it is not."""
+        reply = self.complete(messages, tools=[], json_mode=True)
+        data = json.loads(reply.content or "{}")
+        if not isinstance(data, dict):
+            raise ValueError("The model did not return a JSON object.")
+        return data
+
     def rate_limit_message(self, wait_seconds: float) -> str:
         if self.daily_limit_hit:
             minutes = max(1, round(wait_seconds / 60))
             return f"Groq's free daily token limit is used up for all models. Try again in about {minutes} minutes."
         return "Groq's free rate limit is reached. Wait a minute and try again."
 
-    def _call(self, model: str, messages: list[dict], tools: list[dict], tool_choice: str | dict) -> LLMReply:
-        options = {}
+    def _call(
+        self, model: str, messages: list[dict], tools: list[dict], tool_choice: str | dict, json_mode: bool = False
+    ) -> LLMReply:
+        options: dict = {"tools": tools, "tool_choice": tool_choice} if tools else {}
+        if json_mode:
+            options["response_format"] = {"type": "json_object"}
         if model.startswith("openai/gpt-oss"):
             options["reasoning_effort"] = self.reasoning_effort
         elif model.startswith("qwen/"):
             options["reasoning_format"] = "hidden"  # keep <think> text out of the answer
         response = self.client.chat.completions.create(
-            model=model, messages=messages, tools=tools, tool_choice=tool_choice, temperature=0.1, **options
+            model=model, messages=messages, temperature=0 if json_mode else 0.1, **options
         )
         message = response.choices[0].message
         tool_calls = [
