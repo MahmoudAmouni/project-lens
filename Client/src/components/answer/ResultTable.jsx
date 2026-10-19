@@ -97,7 +97,7 @@ export default function ResultTable({ table }) {
           </thead>
           <tbody>
             {shown.map((row, rowIndex) => (
-              <tr key={rowIndex} className="border-b border-line last:border-0 hover:bg-page/60">
+              <tr key={rowIndex} className="border-b border-line last:border-0 even:bg-row-alt hover:bg-page">
                 {row.map((value, index) => (
                   <td
                     key={index}
