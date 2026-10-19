@@ -1,0 +1,6 @@
+line-length = 120
+target-version = "py311"
+extend-exclude = ["docs"]  # the plan is a document, not code to reformat
+
+[lint]
+select = ["E", "F", "I", "B", "UP"]
