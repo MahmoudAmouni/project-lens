@@ -20,7 +20,7 @@ async def chat(body: ChatRequest, request: Request) -> ChatResponse:
     history = [message.model_dump() for message in body.history]
     stopped = threading.Event()
     work = asyncio.ensure_future(
-        run_in_threadpool(state.ask, body.question.strip(), history, body.ui_language, stopped.is_set)
+        run_in_threadpool(state.ask, body.question.strip(), history, body.ui_language, stopped.is_set, body.model)
     )
     while not work.done():  # the agent runs in a worker thread; meanwhile, watch for the user pressing Stop
         await asyncio.wait({work}, timeout=DISCONNECT_CHECK_SECONDS)
