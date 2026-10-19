@@ -14,6 +14,8 @@ from AI.prompts import (
     SYSTEM_PROMPT,
     TOO_MANY_SEARCHES_PROMPT,
 )
+from AI.question_notes import question_with_notes
+from AI.router import Router
 from AI.tool_runner import run_tool_call
 from AI.tools.list_documents import document_overview
 from AI.tools.registry import SUBMIT_ONLY_SCHEMAS, TOOL_SCHEMAS
@@ -34,11 +36,16 @@ class AgentAnswer:
     sources: list[dict] = field(default_factory=list)
     steps: list[str] = field(default_factory=list)
     model: str = ""
+    style: str = "en"  # the user's writing style: en | ar | ar-lb | arabizi
 
     @classmethod
     def from_final(cls, final: FinalAnswer, steps: list[str], model: str) -> "AgentAnswer":
         sources = [source.to_dict() for source in final.sources]
         return cls(answer=final.answer, table=final.table, sources=sources, steps=steps, model=model)
+
+    def with_style(self, style: str) -> "AgentAnswer":
+        self.style = style
+        return self
 
 
 def build_messages(question: str, history: list[dict] | None, overview: str = "") -> list[dict]:
@@ -76,14 +83,20 @@ def summary_messages(messages: list[dict], steps: list[str]) -> list[dict]:
 
 
 class Agent:
-    def __init__(self, llm, documents: Sequence[DocumentLike], vector_store=None):
+    def __init__(self, llm, documents: Sequence[DocumentLike], vector_store=None, router: Router | None = None):
         self.llm = llm
+        self.router = router or Router()  # Router() alone = the fail-safe style check, no AI call
         self.context = ToolContext(documents=documents, vector_store=vector_store)
         self.overview = document_overview(documents)
         self.seen_calls: set[tuple[str, str]] = set()
         self.search_reminder_sent = False
 
-    def ask(self, question: str, history: list[dict] | None = None) -> AgentAnswer:
+    def ask(self, question: str, history: list[dict] | None = None, ui_language: str | None = None) -> AgentAnswer:
+        route = self.router.route(question, history, ui_language)
+        return self.answer_from_documents(question_with_notes(question, route), history).with_style(route.style)
+
+    def answer_from_documents(self, question: str, history: list[dict] | None) -> AgentAnswer:
+        """The agent loop: tools until submit_answer, with guards and a round limit."""
         messages = build_messages(question, history, self.overview)
         steps: list[str] = []
         nudged = False
