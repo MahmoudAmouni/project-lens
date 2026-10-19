@@ -1,4 +1,4 @@
-// One file in the sidebar: icon, name, size or pages, and a status badge (icon + text, never color alone).
+// One file in the sidebar: icon, name, pages or sheets, and a status badge (icon + text, never color alone).
 
 import {
   AlertTriangle,
@@ -10,38 +10,41 @@ import {
   ScanLine,
   XCircle,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const STATUS = {
-  ok: { label: "Ready", icon: CheckCircle2, className: "text-status-ok" },
-  scanned: { label: "Scanned", icon: ScanLine, className: "text-status-warn" },
-  too_large: { label: "Too large", icon: AlertTriangle, className: "text-status-warn" },
-  empty: { label: "Empty", icon: CircleDashed, className: "text-status-warn" },
-  encrypted: { label: "Locked", icon: Lock, className: "text-status-error" },
-  corrupt: { label: "Corrupt", icon: XCircle, className: "text-status-error" },
+  ok: { icon: CheckCircle2, className: "text-status-ok" },
+  scanned: { icon: ScanLine, className: "text-status-warn" },
+  too_large: { icon: AlertTriangle, className: "text-status-warn" },
+  empty: { icon: CircleDashed, className: "text-status-warn" },
+  encrypted: { icon: Lock, className: "text-status-error" },
+  corrupt: { icon: XCircle, className: "text-status-error" },
 };
 
-function details(document) {
-  if (document.status !== "ok") return document.message;
-  if (document.file_type === "excel") {
-    const sheets = document.tables.length;
-    return `${sheets} sheet${sheets === 1 ? "" : "s"}`;
-  }
+function details(t, document) {
+  if (document.status !== "ok")
+    return t(`statusReason.${document.status}`, { defaultValue: document.message });
+  if (document.file_type === "excel") return t("document.sheets", { count: document.tables.length });
   const tables = document.tables.length
-    ? ` · ${document.tables.length} table${document.tables.length === 1 ? "" : "s"}`
+    ? ` · ${t("document.tables", { count: document.tables.length })}`
     : "";
-  return `${document.pages} p.${tables}`;
+  return t("document.pages", { count: document.pages }) + tables;
 }
 
 export default function DocumentItem({ document }) {
-  const status = STATUS[document.status] ?? STATUS.corrupt;
+  const { t } = useTranslation();
+  const statusName = STATUS[document.status] ? document.status : "corrupt";
+  const status = STATUS[statusName];
   const FileIcon = document.file_type === "excel" ? FileSpreadsheet : FileText;
   const StatusIcon = status.icon;
   const readable = document.status === "ok";
+  const label = t(`status.${statusName}`);
+  const detail = details(t, document);
 
   return (
     <li
       className="group flex items-start gap-2.5 rounded-button px-2 py-2 hover:bg-brand-navy-light"
-      title={document.message || document.name}
+      title={readable ? document.name : detail}
     >
       <FileIcon
         size={18}
@@ -49,12 +52,14 @@ export default function DocumentItem({ document }) {
         className={`mt-0.5 shrink-0 ${readable ? "text-white/80" : "text-white/40"}`}
       />
       <div className="min-w-0 flex-1">
-        <p className={`truncate font-medium ${readable ? "text-white" : "text-white/60"}`}>{document.name}</p>
-        <p className="truncate text-xs text-white/50">{details(document)}</p>
+        <p className={`truncate font-medium ${readable ? "text-white" : "text-white/60"}`}>
+          <bdi>{document.name}</bdi>
+        </p>
+        <p className="truncate text-xs text-white/50">{detail}</p>
       </div>
       <span className={`mt-0.5 flex shrink-0 items-center gap-1 text-xs font-medium ${status.className}`}>
         <StatusIcon size={14} strokeWidth={2} aria-hidden="true" />
-        {readable ? <span className="sr-only">{status.label}</span> : status.label}
+        {readable ? <span className="sr-only">{label}</span> : label}
       </span>
     </li>
   );
