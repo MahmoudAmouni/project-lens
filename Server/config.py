@@ -25,6 +25,7 @@ class Settings:
     docs_folder: str
     max_file_mb: float
     chroma_dir: str
+    usage_file: str  # token use per model, so "tokens left today" survives a restart
 
 
 def load_settings() -> Settings:
@@ -39,4 +40,5 @@ def load_settings() -> Settings:
         docs_folder=project_path(docs_folder) if docs_folder else "",
         max_file_mb=float(os.getenv("MAX_FILE_MB", "100")),
         chroma_dir=project_path(os.getenv("CHROMA_DIR", "./.chroma")),
+        usage_file=project_path(os.getenv("USAGE_FILE", "./.usage/token_usage.json")),
     )
