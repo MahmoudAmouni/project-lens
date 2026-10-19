@@ -1,8 +1,9 @@
-// Top of the chat: menu button (small screens), title, model name, clear chat.
+// Top of the chat: menu button (small screens), title, model name, theme switch, clear chat.
 
 import { Menu, RotateCcw } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 
-export default function TopBar({ model, canClear, onClear, onOpenMenu }) {
+export default function TopBar({ model, canClear, onClear, onOpenMenu, theme, onToggleTheme }) {
   return (
     <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
       <button
@@ -12,7 +13,7 @@ export default function TopBar({ model, canClear, onClear, onOpenMenu }) {
       >
         <Menu size={20} />
       </button>
-      <h1 className="text-base font-semibold text-brand-navy">Ask your documents</h1>
+      <h1 className="text-base font-semibold text-heading">Ask your documents</h1>
       <div className="ml-auto flex items-center gap-2">
         {model && (
           <span
@@ -22,6 +23,7 @@ export default function TopBar({ model, canClear, onClear, onOpenMenu }) {
             {model.replace(/^openai\//, "")}
           </span>
         )}
+        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         <button
           onClick={onClear}
           disabled={!canClear}
