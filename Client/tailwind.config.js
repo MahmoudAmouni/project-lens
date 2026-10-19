@@ -36,7 +36,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Inter", "IBM Plex Sans Arabic", "system-ui", "sans-serif"], // Inter for Latin, Plex for Arabic
       },
       borderRadius: {
         card: "12px",
