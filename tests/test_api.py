@@ -135,3 +135,10 @@ def test_loading_steps_name_each_file(client):
     client.post("/api/documents/load", json={"folder_path": str(SAMPLE_DIR)})
     assert "Reading BOQ_Phase1.xlsx" in seen
     assert client.get("/api/health").json()["loading_step"] is None
+
+
+def test_uploads_in_the_same_second_get_their_own_folders(tmp_path, monkeypatch):
+    monkeypatch.setattr(upload_store, "UPLOADS_DIR", tmp_path / ".uploads")
+    monkeypatch.setattr(upload_store, "KEEP_UPLOADS", 10)
+    folders = {upload_store.save_uploads([]) for _ in range(20)}
+    assert len(folders) == 20
