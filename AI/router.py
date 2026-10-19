@@ -57,10 +57,13 @@ def with_plain_checks(route: Route, fallback: Route) -> Route:
 
 
 def checked_style(model_style: object, guessed: str) -> str:
-    """Trust the model inside one script; if it names the wrong script (Arabic vs Latin letters), keep the guess."""
+    """Trust the model inside one script; if it names the wrong script (Arabic vs Latin letters), keep the guess.
+
+    Lebanese words (شو، يلي، أكتر) are a sure sign: the model calling them "ar" does not win over "ar-lb".
+    """
     if model_style not in STYLES:
         return guessed
-    if (model_style in ARABIC_SCRIPT) != (guessed in ARABIC_SCRIPT):
+    if (model_style in ARABIC_SCRIPT) != (guessed in ARABIC_SCRIPT) or (guessed, model_style) == ("ar-lb", "ar"):
         return guessed
     return str(model_style)
 
