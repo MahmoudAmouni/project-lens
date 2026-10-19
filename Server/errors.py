@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from AI.errors import AIRateLimitedError, AIUnavailableError
+from AI.errors import AIRateLimitedError, AIUnavailableError, QuestionStopped
 
 logger = logging.getLogger("projectlens")
 
@@ -49,6 +49,10 @@ def add_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AIRateLimitedError)
     async def ai_rate_limited(_: Request, error: AIRateLimitedError) -> JSONResponse:
         return error_response("AI_RATE_LIMITED", str(error), 429)
+
+    @app.exception_handler(QuestionStopped)
+    async def question_stopped(_: Request, error: QuestionStopped) -> JSONResponse:
+        return error_response("STOPPED", "The question was stopped.", 499)  # 499: the client closed the request
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(_: Request, error: RequestValidationError) -> JSONResponse:
