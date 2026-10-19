@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, shorten_old_results
 from AI.errors import QuestionStopped, RequestTooLargeError, ToolCallFormatError
-from AI.guards.answer_check import check_answer, sources_from_tool
+from AI.guards.answer_check import check_answer, sources_from_history, sources_from_tool
 from AI.language.replies import example_questions, fixed_reply
 from AI.llm_client import LLMReply
 from AI.messages import assistant_message, build_messages, summary_messages
@@ -92,7 +92,8 @@ class Agent:
             return self.fixed_answer("greeting", route.style, "Greeting: answered without searching")
         if route.intent == "injection" or (route.intent == "off_topic" and self.scope_mode == "strict"):
             return self.fixed_answer("out_of_scope", route.style, "Not about the documents: answered without searching")
-        self.consulted = []
+        # A follow-up about the last answer may reuse that answer's sources (see the answer check).
+        self.consulted = sources_from_history(history) if route.intent == "follow_up" else []
         answer = self.answer_from_documents(question_with_notes(question, route), history)
         return check_answer(answer, self.consulted, fixed_reply("not_found", route.style)).with_style(route.style)
 
