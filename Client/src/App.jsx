@@ -10,9 +10,11 @@ import Toast from "./components/layout/Toast";
 import TopBar from "./components/layout/TopBar";
 import { useChat } from "./hooks/useChat";
 import { useDocuments } from "./hooks/useDocuments";
+import { useTheme } from "./hooks/useTheme";
 
 export default function App() {
   const documents = useDocuments();
+  const { theme, toggle: toggleTheme } = useTheme();
   const chat = useChat();
   const [model, setModel] = useState("");
   const [aiKeySet, setAiKeySet] = useState(true);
@@ -63,6 +65,8 @@ export default function App() {
       <main className="flex min-w-0 flex-1 flex-col">
         <TopBar
           model={model}
+          theme={theme}
+          onToggleTheme={toggleTheme}
           canClear={chat.messages.length > 0}
           onClear={chat.clear}
           onOpenMenu={() => setMenuOpen(true)}
