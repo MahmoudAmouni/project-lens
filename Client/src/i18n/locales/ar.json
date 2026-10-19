@@ -1,5 +1,5 @@
 {
-  "app": { "title": "ProjectLens" },
+  "app": { "title": "عدسة المشروع", "name": "عدسة المشروع", "nameAccent": "عدسة" },
   "topBar": {
     "title": "اسأل مستنداتك",
     "openMenu": "عرض المستندات",
