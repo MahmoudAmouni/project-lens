@@ -124,3 +124,10 @@
     @apply bg-page font-semibold;
   }
 }
+
+/* Language switch: the old screen fades out while the new one (other direction) fades in */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: ease-in-out;
+}
