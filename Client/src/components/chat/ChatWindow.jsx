@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import AgentMessage from "./AgentMessage";
 import OutOfScopeMessage from "./OutOfScopeMessage";
+import StoppedMessage from "./StoppedMessage";
 import EmptyState from "./EmptyState";
 import ErrorMessage from "./ErrorMessage";
 import ThinkingIndicator from "./ThinkingIndicator";
@@ -31,6 +32,9 @@ export default function ChatWindow({ chat, documents, onAskAgain, onOpenMenu }) 
         ) : (
           chat.messages.map((message) => {
             if (message.role === "user") return <UserMessage key={message.id} text={message.text} />;
+            if (message.role === "stopped") {
+              return <StoppedMessage key={message.id} onAskAgain={() => chat.retry(message.id)} />;
+            }
             if (message.role === "error") {
               return (
                 <ErrorMessage key={message.id} text={message.text} onRetry={() => chat.retry(message.id)} />
