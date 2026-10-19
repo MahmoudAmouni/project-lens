@@ -31,7 +31,7 @@ export default function FolderLoader({ folder, loading, error, onLoad }) {
         <button
           type="submit"
           disabled={loading || !path.trim()}
-          className="flex items-center gap-1.5 rounded-button bg-brand-teal px-3 py-2 font-medium text-white hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-button bg-brand-teal px-3 py-2 font-medium text-on-teal hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? (
             <Loader2 size={16} className="animate-spin" aria-hidden="true" />
