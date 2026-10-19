@@ -1,8 +1,9 @@
-// Table of result rows (e.g. BOQ items): sticky header, sortable columns, money formatted and right-aligned,
+// Table of result rows (e.g. BOQ items): sticky header, sortable columns, money formatted and end-aligned,
 // a total row for money columns, "Show all", Export CSV and Copy.
 
 import { ArrowDown, ArrowUp, Check, Copy, Download } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   downloadText,
   formatCell,
@@ -37,6 +38,8 @@ function withoutEmptyColumns({ columns, rows }) {
 }
 
 export default function ResultTable({ table }) {
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage;
   const { columns, rows } = useMemo(() => withoutEmptyColumns(table), [table]);
   const longText = useMemo(
     () => columns.map((_, index) => rows.some((row) => String(row[index] ?? "").length > LONG_TEXT_CHARS)),
@@ -81,7 +84,7 @@ export default function ResultTable({ table }) {
               {columns.map((column, index) => (
                 <th
                   key={column}
-                  className={`whitespace-nowrap border-b border-line px-3 py-2 font-semibold ${numeric[index] ? "text-right" : "text-left"}`}
+                  className={`whitespace-nowrap border-b border-line px-3 py-2 font-semibold ${numeric[index] ? "text-end" : "text-start"}`}
                 >
                   <button
                     onClick={() => toggleSort(index)}
@@ -103,10 +106,10 @@ export default function ResultTable({ table }) {
                     key={index}
                     dir="auto"
                     className={`px-3 py-1.5 ${longText[index] ? "min-w-[14rem]" : "whitespace-nowrap"} ${
-                      numeric[index] ? "text-right" : ""
+                      numeric[index] ? "text-end" : ""
                     } ${columns[index] === "Source" ? "text-xs text-brand-teal-dark" : ""}`}
                   >
-                    {formatCell(value, columns[index])}
+                    {formatCell(value, columns[index], language)}
                   </td>
                 ))}
               </tr>
@@ -118,12 +121,12 @@ export default function ResultTable({ table }) {
                 {columns.map((column, index) => (
                   <td
                     key={column}
-                    className={`whitespace-nowrap border-t border-line px-3 py-2 ${numeric[index] ? "text-right" : ""}`}
+                    className={`whitespace-nowrap border-t border-line px-3 py-2 ${numeric[index] ? "text-end" : ""}`}
                   >
                     {index === 0
-                      ? `Total (${rows.length} rows)`
+                      ? t("table.total", { count: rows.length })
                       : summable[index]
-                        ? formatCell(sumColumn(rows, index), column)
+                        ? formatCell(sumColumn(rows, index), column, language)
                         : ""}
                   </td>
                 ))}
@@ -135,28 +138,28 @@ export default function ResultTable({ table }) {
       <div className="flex items-center gap-2 border-t border-line bg-surface px-3 py-2 text-xs text-ink-quiet">
         <span>
           {shown.length < sorted.length
-            ? `Showing ${shown.length} of ${sorted.length} rows`
-            : `${sorted.length} rows`}
+            ? t("table.showing", { shown: shown.length, total: sorted.length })
+            : t("table.rows", { count: sorted.length })}
         </span>
         {shown.length < sorted.length && (
           <button
             onClick={() => setShowAll(true)}
             className="font-medium text-brand-teal-dark hover:underline"
           >
-            Show all
+            {t("table.showAll")}
           </button>
         )}
         <button
           onClick={copy}
-          className="ml-auto flex items-center gap-1 rounded-button px-2 py-1 hover:bg-page hover:text-ink"
+          className="ms-auto flex items-center gap-1 rounded-button px-2 py-1 hover:bg-page hover:text-ink"
         >
-          {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}
+          {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? t("answer.copied") : t("answer.copy")}
         </button>
         <button
           onClick={() => downloadText("projectlens-results.csv", tableToCsv(columns, sorted))}
           className="flex items-center gap-1 rounded-button px-2 py-1 hover:bg-page hover:text-ink"
         >
-          <Download size={14} /> Export CSV
+          <Download size={14} /> {t("table.exportCsv")}
         </button>
       </div>
     </div>
