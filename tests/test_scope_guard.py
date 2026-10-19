@@ -7,6 +7,7 @@ import pytest
 from AI.agent import Agent
 from AI.guards.answer_check import sources_from_history
 from AI.guards.injection_check import looks_like_injection
+from AI.language.style_detect import looks_like_greeting
 from AI.router import Router
 from AI.tools.read_document import read_document
 from AI.tools.tool_context import ToolContext
@@ -65,11 +66,17 @@ def test_greeting_is_answered_without_ai_even_with_no_router_model(documents):
 @pytest.mark.parametrize(
     ("text", "style", "name"),
     [("What's your name?", "en", "ProjectLens"), ("شو اسمك؟", "ar-lb", "بصيرة"), ("ما اسمك؟", "ar", "بصيرة"),
-     ("shu esmak?", "arabizi", "ProjectLens")],
+     ("shu esmak?", "arabizi", "ProjectLens"), ("sho esmak enta", "arabizi", "ProjectLens"),
+     ("what is ur name", "en", "ProjectLens")],
 )  # fmt: skip
 def test_asking_the_ai_its_name_gets_the_greeting_with_its_name(documents, text, style, name):
     answer = Agent(never_called(), documents, router=router_saying(style, "document_question")).ask(text)
     assert (answer.kind, answer.style) == ("greeting", style) and name in answer.answer
+
+
+@pytest.mark.parametrize("text", ["What is the contractor name?", "شو اسم المقاول؟", "esm l contractor shu?"])
+def test_a_name_in_the_documents_is_still_a_document_question(text):
+    assert not looks_like_greeting(text)
 
 
 @pytest.mark.parametrize(
