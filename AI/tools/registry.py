@@ -5,6 +5,7 @@ To add a tool: write AI/tools/<name>.py, add it to TOOLS below, and add one line
 
 from collections.abc import Callable
 
+from AI.tools.calculate import calculate
 from AI.tools.describe_table import describe_table
 from AI.tools.find_dates import find_dates
 from AI.tools.list_documents import list_documents
@@ -117,6 +118,19 @@ TOOLS: dict[str, tuple[Callable, dict]] = {
             "find_dates",
             "Every date, quarter and time period (e.g. 'within 28 days') with its sentence and page.",
             {"document": {**DOCUMENT, "description": "Optional: one file. Leave out for all files."}},
+        ),
+    ),
+    "calculate": (
+        calculate,
+        schema(
+            "calculate",
+            "Exact arithmetic (+ - * / brackets, 15% works) on numbers the tools returned: percentages, shares, "
+            "differences, VAT, averages. Copy the numbers exactly from tool results; other numbers are refused.",
+            {
+                "expression": {"type": "string", "description": "e.g. '45425725 * 15%' or '(570000 - 126000) / 2'"},
+                "label": {"type": "string", "description": "What it is, e.g. 'VAT on the BOQ total'."},
+            },
+            ["expression"],
         ),
     ),
     "submit_answer": (
