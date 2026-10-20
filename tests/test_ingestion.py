@@ -37,6 +37,7 @@ def documents():
         ("Protected_Annex.pdf", "encrypted"),
         ("Empty_Workbook.xlsx", "empty"),
         ("Zero_Bytes.xlsx", "empty"),
+        ("Meeting_Notes.docx", "ok"),
     ],
 )
 def test_each_sample_file_gets_the_right_status(documents, name, status):
@@ -47,7 +48,7 @@ def test_each_sample_file_gets_the_right_status(documents, name, status):
 
 def test_unsupported_files_are_skipped_not_errors():
     _, skipped = scan_folder(SAMPLE_DIR)
-    assert [file.name for file in skipped] == ["Meeting_Notes.docx"]
+    assert [file.name for file in skipped] == ["Site_Photo.png"]
 
 
 def test_missing_folder_raises_clear_error():
