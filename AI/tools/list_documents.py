@@ -3,6 +3,7 @@
 import pandas as pd
 
 from AI.tools.query_table import AMOUNT_NAME
+from AI.tools.same_names import same_name_groups, same_name_note
 from AI.tools.tool_context import ToolContext, ToolResult
 
 NOT_STATED = "currency not stated"
@@ -50,16 +51,20 @@ def document_overview(documents) -> str:
     overview = "\n".join(lines)
     if len(overview) > MAX_OVERVIEW_CHARS:
         overview = overview[:MAX_OVERVIEW_CHARS] + "\n... (more files: call list_documents)"
-    return overview
+    note = same_name_note([document.name for document in documents])  # after the cut, so it is never lost
+    return f"{overview}\n{note}" if note else overview
 
 
 def list_documents(context: ToolContext) -> ToolResult:
     """Every file: name, type, status, page count, tables with rows and columns."""
     documents = []
+    same_names = {name: group for group in same_name_groups([d.name for d in context.documents]) for name in group}
     for document in context.documents:
         entry = {"name": document.name, "type": document.file_type, "status": document.status}
         if document.message:
             entry["note"] = document.message
+        if document.name in same_names:
+            entry["same_name_as"] = [name for name in same_names[document.name] if name != document.name]
         if document.pages:
             entry["pages"] = len(document.pages)
         if document.tables:
