@@ -20,7 +20,7 @@ SUMMARY_SHEET = re.compile(r"summary|recap|totals?\b|ملخص|الإجمالي",
 
 def row_source(document, table, row_number: int, row: pd.Series) -> str:
     """Citation for one row: "BOQ.xlsx · BOQ · row 47" or "BOQ.pdf · p. 3"."""
-    if document.file_type == "pdf" and "Page" in row.index:
+    if document.file_type in ("pdf", "word") and "Page" in row.index:
         return f"{document.name} · p. {to_plain(row['Page'])}"
     return f"{document.name} · {table.id} · row {row_number}"
 
