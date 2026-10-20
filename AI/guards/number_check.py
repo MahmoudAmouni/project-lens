@@ -74,8 +74,9 @@ def table_text(table: dict | None) -> str:
 
 def keep_tool_numbers(answer, known_texts: list[str], context, new_table_ids: list[str], style: str):
     """An answer with numbers no tool returned loses its text: the exact saved rows are shown instead,
-    or the fixed "not found" reply when this question saved no rows."""
-    if answer.kind != "answer":
+    or the fixed "not found" reply when this question saved no rows. A "not found" answer is checked too,
+    so marking an answer not_found never lets made-up numbers through."""
+    if answer.kind not in ("answer", "not_found"):
         return answer
     known = known_numbers([*known_texts, *(table_text(table) for table in context.saved_tables.values())])
     made_up = unsupported_numbers(f"{answer.answer} {table_text(answer.table)}", known)
