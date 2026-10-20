@@ -17,6 +17,7 @@ HEADER_SEARCH_ROWS = 30  # the header is looked for in the first rows only
 NUMERIC_SHARE = 0.8  # a column is numeric when 80% of its cells are numbers
 CURRENCY_SAMPLE_CELLS = 200  # cells checked for a currency word when the header has none
 IDENTIFIER_HEADER = re.compile(r"^(item|no|ref|code|id|#|s/?n|serial|clause|section|البند|رقم)\b", re.I)
+MONEY_HEADER = re.compile(r"amount|total|price|cost|value|rate|sum|المبلغ|القيمة|السعر|الإجمالي|التكلفة", re.I)
 SUMMARY_TEXT = re.compile(r"^\s*(sub[\s-]?total|grand total|total|المجموع|الإجمالي|اجمالي)\b", re.I)
 
 
@@ -109,8 +110,11 @@ def find_summary_rows(data: pd.DataFrame) -> list[int]:
     return [int(number) for number in data.index[is_summary]]
 
 
-def clean_table(rows: list[list[object]], row_numbers: list[int] | None = None) -> CleanTable | None:
-    """Clean a raw grid. `row_numbers` gives the file row of each raw row. None if empty."""
+def clean_table(
+    rows: list[list[object]], row_numbers: list[int] | None = None, note_currency: str | None = None
+) -> CleanTable | None:
+    """Clean a raw grid. `row_numbers` gives the file row of each raw row. None if empty.
+    `note_currency`: the currency a note above the table names; money columns without their own use it."""
     if row_numbers is None:
         row_numbers = list(range(1, len(rows) + 1))
     grid = [[tidy_cell(cell) for cell in row] for row in rows]
@@ -146,7 +150,7 @@ def clean_table(rows: list[list[object]], row_numbers: list[int] | None = None) 
     for name in names:
         numbers = parse_number_column(name, data[name])
         if numbers is not None:
-            currency = find_currency(name, data[name])
+            currency = find_currency(name, data[name]) or (note_currency if MONEY_HEADER.search(name) else None)
             data[name] = pd.Series(numbers, index=data.index, dtype="float64")
             if currency:
                 currencies[name] = currency
