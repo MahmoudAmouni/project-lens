@@ -49,10 +49,12 @@ def is_text(value: object) -> bool:
 
 
 def find_header_row(rows: list[list[object]], width: int) -> int | None:
-    """Index of the first row that is mostly words and fills enough columns."""
+    """Index of the first row that is mostly words and fills enough columns.
+
+    A title merged across the columns ("PROJECT X - BOQ") repeats one text in every cell: never a header."""
     for index, row in enumerate(rows[:HEADER_SEARCH_ROWS]):
         filled = [cell for cell in row if cell is not None]
-        if len(filled) < max(2, width * 0.5):
+        if len(filled) < max(2, width * 0.5) or len({str(cell) for cell in filled}) < 2:
             continue
         if sum(is_text(cell) for cell in filled) / len(filled) >= 0.6:
             return index
