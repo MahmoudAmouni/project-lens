@@ -26,8 +26,10 @@
     "folder": "المجلد",
     "folderPlaceholder": "C:/docs/tender",
     "load": "تحميل",
-    "drop": "أو اسحب الملفات هنا / اختر ملفات",
+    "drop": "أو اسحب ملفات أو مجلداً هنا / اختر ملفات",
     "dropNow": "أفلت الملفات لرفعها",
+    "chooseFolder": "اختر مجلداً",
+    "noSupportedFiles": "لا توجد ملفات PDF أو Excel هناك.",
     "documents": "المستندات",
     "noDocuments": "لا توجد مستندات بعد. أدخل مسار مجلد في الأعلى، أو اسحب ملفات PDF وExcel إلى هنا.",
     "skipped": "تم تخطي ملفات: {{count}} ({{types}})"
