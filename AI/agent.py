@@ -97,11 +97,10 @@ class Agent:
         # A follow-up about the last answer may reuse that answer's sources (see the answer check).
         self.consulted = sources_from_history(history) if route.intent == "follow_up" else []
         self.tool_texts = []
-        tables_before = set(self.context.saved_tables)
+        self.context.saved_tables.clear()  # an answer may only attach rows saved for this question (t1, t2...)
         answer = self.answer_from_documents(question_with_notes(question, route), history)
-        new_tables = [table_id for table_id in self.context.saved_tables if table_id not in tables_before]
         known = [question, str(history or ""), *self.tool_texts]
-        answer = keep_tool_numbers(answer, known, self.context, new_tables, route.style)
+        answer = keep_tool_numbers(answer, known, self.context, list(self.context.saved_tables), route.style)
         return check_answer(answer, self.consulted, fixed_reply("not_found", route.style)).with_style(route.style)
 
     def fixed_answer(self, kind: str, style: str, step: str) -> AgentAnswer:
