@@ -131,7 +131,7 @@
     "FOLDER_NOT_FOUND": "This folder does not exist. Check the path and try again.",
     "FOLDER_EMPTY": "There are no PDF, Excel or Word files in this folder.",
     "NO_DOCUMENTS_LOADED": "Load a folder with PDF, Excel or Word files first.",
-    "AI_UNAVAILABLE": "The AI is not available: check GROQ_API_KEY in .env and your internet connection.",
+    "AI_UNAVAILABLE": "The AI is not available right now.",
     "AI_RATE_LIMITED": "The free AI limit is reached for now. Wait a few minutes and try again.",
     "INVALID_REQUEST": "The request is not valid. Check what you typed and try again.",
     "INTERNAL_ERROR": "Something went wrong on the server. Please try again."
