@@ -1,4 +1,5 @@
-// Fixed replies: a soft amber card for questions outside the documents, a teal one for greetings.
+// Fixed replies: a soft amber card for questions outside the documents, a teal one for greetings
+// and for messages too short to answer ("?").
 // The example questions are buttons that ask them.
 
 import { Info, MessageCircleQuestion, Sparkles } from "lucide-react";
@@ -10,6 +11,11 @@ const LOOK = {
     iconColor: "text-status-warn",
   },
   greeting: { icon: Sparkles, card: "border-brand-teal/30 bg-brand-teal-soft", iconColor: "text-brand-teal" },
+  clarify: {
+    icon: MessageCircleQuestion,
+    card: "border-brand-teal/30 bg-brand-teal-soft",
+    iconColor: "text-brand-teal",
+  },
 };
 
 export default function OutOfScopeMessage({ answer, onAsk }) {
