@@ -1,4 +1,4 @@
-"""Find the PDF and Excel files in a folder. Everything else is reported as skipped."""
+"""Find the PDF, Excel and Word files in a folder. Everything else is reported as skipped."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -7,6 +7,7 @@ from Server.ingestion.models import SkippedFile
 
 PDF_EXTENSIONS = {".pdf"}
 EXCEL_EXTENSIONS = {".xlsx", ".xls", ".xlsm"}
+WORD_EXTENSIONS = {".docx"}
 
 
 class FolderNotFoundError(Exception):
@@ -19,16 +20,18 @@ class FoundFile:
 
     path: Path
     name: str  # path relative to the folder, e.g. "BOQ/Phase1.xlsx"
-    file_type: str  # "pdf" or "excel"
+    file_type: str  # "pdf", "excel" or "word"
 
 
 def file_type_for(path: Path) -> str | None:
-    """Return "pdf", "excel", or None for unsupported files."""
+    """Return "pdf", "excel", "word", or None for unsupported files."""
     extension = path.suffix.lower()
     if extension in PDF_EXTENSIONS:
         return "pdf"
     if extension in EXCEL_EXTENSIONS:
         return "excel"
+    if extension in WORD_EXTENSIONS:
+        return "word"
     return None
 
 
