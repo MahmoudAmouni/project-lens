@@ -29,9 +29,9 @@
     "drop": "or drop files or a folder here / choose files",
     "dropNow": "Drop to upload",
     "chooseFolder": "Choose a folder",
-    "noSupportedFiles": "No PDF or Excel files found there.",
+    "noSupportedFiles": "No PDF, Excel or Word files found there.",
     "documents": "Documents",
-    "noDocuments": "No documents yet. Enter a folder path above, or drop PDF and Excel files here.",
+    "noDocuments": "No documents yet. Enter a folder path above, or drop PDF, Excel and Word files here.",
     "skipped_one": "{{count}} file skipped ({{types}})",
     "skipped_other": "{{count}} files skipped ({{types}})"
   },
@@ -55,7 +55,7 @@
     "too_large": "Bigger than the size limit (MAX_FILE_MB).",
     "empty": "The file is empty.",
     "encrypted": "The file is password protected.",
-    "corrupt": "The file is damaged or not a real PDF or Excel file."
+    "corrupt": "The file is damaged or not a real PDF, Excel or Word file."
   },
   "progress": {
     "opening": "Opening the folder…",
@@ -75,7 +75,7 @@
   "empty": {
     "loadTitle": "Load your project documents",
     "loadingTitle": "Reading your documents…",
-    "loadText": "Enter a folder path in the sidebar, or drop PDF and Excel files there. Every answer will show its source file and page.",
+    "loadText": "Enter a folder path in the sidebar, or drop PDF, Excel and Word files there. Every answer will show its source file and page.",
     "loadingText": "This can take a minute the first time, while the search index is built.",
     "openDocuments": "Open documents",
     "askTitle_one": "Ask anything about your {{count}} document",
@@ -90,7 +90,7 @@
   },
   "chat": {
     "placeholder": "Ask a question… (Shift+Enter for a new line)",
-    "noDocumentsHint": "Load a folder with PDF or Excel files to start",
+    "noDocumentsHint": "Load a folder with PDF, Excel or Word files to start",
     "readingHint": "Reading your documents…",
     "question": "Question",
     "send": "Send question",
@@ -129,8 +129,8 @@
     "SERVER_UNREACHABLE": "The server is not running. Start it with scripts/start, then try again.",
     "STOPPED": "Stopped.",
     "FOLDER_NOT_FOUND": "This folder does not exist. Check the path and try again.",
-    "FOLDER_EMPTY": "There are no PDF or Excel files in this folder.",
-    "NO_DOCUMENTS_LOADED": "Load a folder with PDF or Excel files first.",
+    "FOLDER_EMPTY": "There are no PDF, Excel or Word files in this folder.",
+    "NO_DOCUMENTS_LOADED": "Load a folder with PDF, Excel or Word files first.",
     "AI_UNAVAILABLE": "The AI is not available: check GROQ_API_KEY in .env and your internet connection.",
     "AI_RATE_LIMITED": "The free AI limit is reached for now. Wait a few minutes and try again.",
     "INVALID_REQUEST": "The request is not valid. Check what you typed and try again.",
