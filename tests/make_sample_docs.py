@@ -5,6 +5,7 @@ Run: python -m tests.make_sample_docs
 
 from pathlib import Path
 
+import docx
 import openpyxl
 import pymupdf
 
@@ -142,6 +143,25 @@ def write_empty_workbook(path: Path) -> None:
     workbook.save(path)
 
 
+def write_meeting_notes(path: Path) -> None:
+    """A real Word file: two pages (hard page break) and an action table on page 2."""
+    notes = docx.Document()
+    notes.add_heading("Site Meeting No. 7", level=1)
+    notes.add_paragraph("Attendees: Client representative, Main Contractor, MEP Subcontractor.")
+    notes.add_paragraph("The contractor reported that slab casting for Level 3 is complete.")
+    notes.add_page_break()
+    notes.add_heading("Action items", level=2)
+    table = notes.add_table(rows=1, cols=3)
+    table.rows[0].cells[0].text, table.rows[0].cells[1].text, table.rows[0].cells[2].text = "Action", "Owner", "Status"
+    for action, owner, status in [
+        ("Submit revised shop drawings for ducts", "MEP Subcontractor", "Open"),
+        ("Approve facade mock-up", "Client representative", "Closed"),
+    ]:
+        cells = table.add_row().cells
+        cells[0].text, cells[1].text, cells[2].text = action, owner, status
+    notes.save(path)
+
+
 def main() -> None:
     SAMPLE_DIR.mkdir(exist_ok=True)
     write_contract(SAMPLE_DIR / "Contract_A.pdf")
@@ -154,7 +174,8 @@ def main() -> None:
     write_empty_workbook(SAMPLE_DIR / "Empty_Workbook.xlsx")
     (SAMPLE_DIR / "Corrupt_Report.pdf").write_text("This is a text file renamed to .pdf\n")
     (SAMPLE_DIR / "Zero_Bytes.xlsx").write_bytes(b"")
-    (SAMPLE_DIR / "Meeting_Notes.docx").write_text("Not a real Word file; it should be skipped.\n")
+    write_meeting_notes(SAMPLE_DIR / "Meeting_Notes.docx")
+    (SAMPLE_DIR / "Site_Photo.png").write_bytes(b"\x89PNG\r\n\x1a\n")  # not a document: it should be skipped
     if not write_arabic_scope(SAMPLE_DIR / "Arabic_Scope.pdf"):
         print("Skipped Arabic_Scope.pdf: no Arabic font found.")
     print(f"Sample documents written to {SAMPLE_DIR}")
