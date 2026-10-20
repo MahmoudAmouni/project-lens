@@ -141,7 +141,7 @@ scripts/  setup, start, evaluate (accuracy check against real questions)
 | Case | What happens |
 | --- | --- |
 | Folder missing / no PDF or Excel inside | Clear error (`FOLDER_NOT_FOUND`, `FOLDER_EMPTY`) |
-| Unsupported files (.docx, .png) | Listed as skipped, not an error |
+| Unsupported files (.doc, .png) | Listed as skipped, not an error |
 | Corrupt, password-protected, scanned or empty file | Marked with a status badge and a reason; the AI is told it cannot be read |
 | File over `MAX_FILE_MB` | Marked "too large" and skipped |
 | 600-page PDF, 100,000-row Excel | Loads in about 15 seconds; tools return pages and rows in small pieces; filters still check every row |
