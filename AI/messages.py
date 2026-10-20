@@ -19,15 +19,16 @@ def build_messages(question: str, history: list[dict] | None, overview: str = ""
 
 
 def assistant_message(reply: LLMReply) -> dict:
-    """The model's tool-call turn, in the format Groq expects back."""
+    """The model's tool-call turn, in the format Groq expects back (plus Gemini's thought signature, if any)."""
     return {
         "role": "assistant",
         "content": reply.content or None,
         "tool_calls": [
-            {"id": call.id, "type": "function", "function": {"name": call.name, "arguments": call.arguments}}
+            {"id": call.id, "type": "function", "function": {"name": call.name, "arguments": call.arguments},
+             **({"extra_content": call.extra_content} if call.extra_content else {})}
             for call in reply.tool_calls
         ],
-    }
+    }  # fmt: skip
 
 
 def summary_messages(messages: list[dict], steps: list[str]) -> list[dict]:
