@@ -65,7 +65,7 @@ class AppState:
                     raise folder_not_found(str(error)) from error
                 if not result.documents:
                     skipped = f" ({len(result.skipped)} other files were skipped)" if result.skipped else ""
-                    raise folder_empty(f"There are no PDF or Excel files in {folder}{skipped}.")
+                    raise folder_empty(f"There are no PDF, Excel or Word files in {folder}{skipped}.")
                 self.loading_step = "Building the search index"
                 store = self.build_index(result)
                 # switch everything at once, so a question never sees new documents with the old index
