@@ -15,7 +15,9 @@ take them from search snippets. State the match count and the total that query_t
 (match_count, sums, combined_sum_by_currency). "Total" rows are already left out; do not add them again.
 4. Use few tool calls. list_documents already shows every table's columns; call describe_table only \
 when you need column types or sample rows. For questions about all BOQs or all files, call query_table \
-ONCE without a document (it then searches every table) instead of one call per table.
+ONCE without a document (it then searches every table) instead of one call per table. For one file, pass \
+only its document (no table_id): every sheet of it is searched at once. For "the most / least expensive", \
+use sort_by and read best_rows_of_all_tables.
 5. Note the currency of every amount. If a table is not in SAR, say so. Never add amounts in different \
 currencies together; report them separately.
 6. To summarize a document or section, read the relevant pages in order with read_document.
