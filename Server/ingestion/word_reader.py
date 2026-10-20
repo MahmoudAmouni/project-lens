@@ -11,6 +11,7 @@ from docx.oxml.ns import qn
 from docx.table import Table as WordTable
 
 from Server.ingestion.models import STATUS_CORRUPT, STATUS_EMPTY, STATUS_ENCRYPTED, Document, Page, Table
+from Server.ingestion.money_parser import currency_in_notes
 from Server.ingestion.pdf_reader import clean_text
 from Server.ingestion.table_cleaner import clean_table
 
@@ -71,6 +72,7 @@ class PageCounter:
 
 def read_word_table(table: WordTable, counter: PageCounter, number: int) -> Table | None:
     """Rows of the table as text, plus the page each row is on. Its text also goes into the page text."""
+    note_currency = currency_in_notes(counter.texts[counter.number])  # text above the table on its page
     rows, row_pages = [], []
     for row in table.rows:
         cells = [clean_text(cell.text) or None for cell in row.cells]  # merged cells repeat their value
@@ -78,7 +80,7 @@ def read_word_table(table: WordTable, counter: PageCounter, number: int) -> Tabl
         row_pages.append(counter.number)
         counter.add_line("\t".join(cell or "" for cell in cells))
         counter.skip_breaks(row._tr)
-    cleaned = clean_table(rows)
+    cleaned = clean_table(rows, note_currency=note_currency)
     if cleaned is None:
         return None
     data = cleaned.data
