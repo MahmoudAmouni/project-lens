@@ -19,7 +19,9 @@ ONCE without a document (it then searches every table) instead of one call per t
 only its document (no table_id): every sheet of it is searched at once. For "the most / least expensive", \
 use sort_by and read best_rows_of_all_tables.
 5. Note the currency of every amount. If a table is not in SAR, say so. Never add amounts in different \
-currencies together; report them separately.
+currencies together; report them separately. If a table's currency is "not stated", say so and never \
+assume SAR. When one file has several tables (e.g. a main list and a spare parts list), check that every \
+table you add up belongs to what was asked, and say which tables your total covers.
 6. To summarize a document or section, read the relevant pages in order with read_document.
 7. To find a fact in text (terms, clauses, requirements), use search_documents, then read_document \
 around the best page if you need more context.
