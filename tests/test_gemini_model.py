@@ -1,5 +1,6 @@
 """Gemini as one more pickable model: routing, its request-based limits and its errors (no API calls)."""
 
+import time
 from types import SimpleNamespace
 
 import groq
@@ -52,7 +53,7 @@ def test_the_path_is_fixed_for_gemini_openai_endpoint():
     assert request.url.path == "/v1beta/openai/chat/completions"
 
 
-def test_gemini_is_a_choice_but_never_an_automatic_backup(tmp_path):
+def test_gemini_is_a_choice_and_not_in_the_normal_order(tmp_path):
     llm = gemini_llm(tmp_path)
     assert llm.configured_models == ["groq-a", "groq-b", "gemini-2.5-flash"]
     assert llm.models == ["groq-a", "groq-b"]
@@ -60,6 +61,38 @@ def test_gemini_is_a_choice_but_never_an_automatic_backup(tmp_path):
     assert llm.models == ["gemini-2.5-flash", "groq-a", "groq-b"]  # the Groq models back it up
     llm.prefer("groq-b")
     assert llm.models == ["groq-b", "groq-a"]
+
+
+def rate_limit_error() -> groq.RateLimitError:
+    response = httpx.Response(429, headers={"retry-after": "600"}, request=httpx.Request("POST", "https://x.test"))
+    return groq.RateLimitError("Rate limit reached", response=response, body=None)
+
+
+QUESTION = [{"role": "user", "content": "hi"}]
+
+
+def test_groq_answers_while_it_is_free_even_with_a_gemini_key(tmp_path):
+    llm = gemini_llm(tmp_path)
+    llm.client, groq_calls = fake_client()
+    llm.gemini_client, gemini_calls = fake_client()
+    llm.limited_until["groq-a"] = time.monotonic() - 5  # a limit that has already ended
+    assert llm.complete(QUESTION, []).model == "groq-a"
+    assert gemini_calls.sent == []
+
+
+def test_gemini_takes_over_when_every_groq_model_is_rate_limited(tmp_path):
+    llm = gemini_llm(tmp_path)
+    llm.client, groq_calls = fake_client()
+    llm.gemini_client, gemini_calls = fake_client()
+
+    def limited(**options):
+        groq_calls.sent.append(options)
+        raise rate_limit_error()
+
+    groq_calls.create = limited
+    assert llm.complete(QUESTION, []).model == "gemini-2.5-flash"  # no 10-minute wait for Groq
+    assert [call["model"] for call in groq_calls.sent] == ["groq-a", "groq-b"]
+    assert len(gemini_calls.sent) == 1
 
 
 def test_without_a_gemini_key_there_is_no_gemini_choice(tmp_path):
