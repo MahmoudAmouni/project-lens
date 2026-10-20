@@ -97,9 +97,10 @@ TOOLS: dict[str, tuple[Callable, dict]] = {
             "query_table",
             "Exact filter over EVERY row. Returns match count, sums per column (with currency), the first rows "
             "with their source, and a table_result_id. Use for all amounts, totals, counts and thresholds. "
-            "Leave out document to search every table in every file at once.",
+            "A file without table_id searches every sheet of that file; leave out document to search every "
+            "table in every file. With sort_by, best_rows_of_all_tables ranks the rows of all tables together.",
             {
-                "document": {**DOCUMENT, "description": "One file, or leave out / '*' for every table."},
+                "document": {**DOCUMENT, "description": "One file (all its sheets), or leave out / '*' for all."},
                 "table_id": TABLE_ID,
                 "filters": {"type": "array", "items": FILTER, "description": "All must match (AND)."},
                 "columns": {"type": "array", "items": {"type": "string"}, "description": "Columns to return."},
