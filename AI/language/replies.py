@@ -68,3 +68,23 @@ def fixed_reply(kind: str, style: str) -> str:
         "table_only": TABLE_ONLY,
     }[kind]  # fmt: skip
     return texts.get(style, texts["en"])
+
+
+UNREADABLE_NOTE = {  # added under a "not found" answer: the answer may be in a file that could not be read
+    "en": "These files could not be read, so the answer may be in them:",
+    "ar": "تعذّرت قراءة هذه الملفات، لذا قد تكون الإجابة فيها:",
+    "ar-lb": "ما قدرت إقرا هالملفات، فممكن يكون الجواب فيهن:",
+    "arabizi": "Ma 2deret e2ra hal files, fa momken ykoun l jaweb fihon:",
+}
+MAX_UNREADABLE_LISTED = 5
+
+
+def unreadable_note(answer_text: str, documents, style: str) -> str:
+    """A line naming the unreadable files (scanned, corrupt, encrypted...), or "" when there are none
+    or the answer already names them all."""
+    unreadable = [document for document in documents if document.status != "ok"]
+    if not unreadable or all(document.name in answer_text for document in unreadable):
+        return ""
+    listed = ", ".join(f"{document.name} ({document.status})" for document in unreadable[:MAX_UNREADABLE_LISTED])
+    more = f" +{len(unreadable) - MAX_UNREADABLE_LISTED}" if len(unreadable) > MAX_UNREADABLE_LISTED else ""
+    return f"\n\n{UNREADABLE_NOTE.get(style, UNREADABLE_NOTE['en'])} {listed}{more}"
