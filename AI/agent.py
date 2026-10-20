@@ -92,6 +92,8 @@ class Agent:
         self.check_stop()
         if route.intent == "greeting":
             return self.fixed_answer("greeting", route.style, "Greeting: answered without searching")
+        if route.intent == "clarify":
+            return self.fixed_answer("clarify", route.style, "Too short to answer: asked for the question")
         if route.intent == "injection" or (route.intent == "off_topic" and self.scope_mode == "strict"):
             return self.fixed_answer("out_of_scope", route.style, "Not about the documents: answered without searching")
         # A follow-up about the last answer may reuse that answer's sources (see the answer check).
