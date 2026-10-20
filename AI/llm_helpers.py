@@ -4,6 +4,7 @@ import re
 
 import groq
 
+from AI.errors import AIUnavailableError, RequestTooLargeError
 from AI.gemini_client import is_gemini
 
 DEFAULT_WAIT_SECONDS = 5.0
@@ -19,6 +20,25 @@ def key_name(model: str) -> str:
     return "GEMINI_API_KEY" if is_gemini(model) else "GROQ_API_KEY"
 
 
+def provider_name(model: str) -> str:
+    return "Gemini" if is_gemini(model) else "Groq"
+
+
+def providers_of(models: list[str]) -> str:
+    """ "Groq", "Gemini" or "Groq and Gemini": who the user is waiting for."""
+    names = list(dict.fromkeys(provider_name(model) for model in models)) or ["Groq"]
+    return " and ".join(names)
+
+
+def wait_text(seconds: float) -> str:
+    """ "about 1 minute", "about 25 minutes", "about 3 hours"."""
+    minutes = max(1, round(seconds / 60))
+    if minutes >= 90:
+        hours = round(minutes / 60)
+        return f"about {hours} hour{'s' if hours != 1 else ''}"
+    return f"about {minutes} minute{'s' if minutes != 1 else ''}"
+
+
 def retry_after_seconds(error: groq.RateLimitError) -> float:
     """Seconds to wait: Groq's retry-after header, Gemini's "retry in 23.5s" text, or a default."""
     try:
@@ -31,12 +51,41 @@ def retry_after_seconds(error: groq.RateLimitError) -> float:
     return float(found.group(1)) + 0.5 if found else DEFAULT_WAIT_SECONDS
 
 
-def rate_limit_message(daily_limit_hit: bool, wait_seconds: float) -> str:
-    """What the user reads when every model is rate limited for longer than we may wait."""
+def rate_limit_message(daily_limit_hit: bool, wait_seconds: float, models: list[str], busy: bool = False) -> str:
+    """What the user reads when no model can answer within the time we may wait."""
+    providers = providers_of(models)
+    if busy:
+        return f"{providers} is busy right now (server overloaded). Try again in a minute."
     if daily_limit_hit:
-        minutes = max(1, round(wait_seconds / 60))
-        return f"Groq's free daily token limit is used up for all models. Try again in about {minutes} minutes."
-    return "Groq's free rate limit is reached. Wait a minute and try again."
+        return f"The free daily limit of {providers} is used up for all models. Try again in {wait_text(wait_seconds)}."
+    return f"The free rate limit of {providers} is reached. Wait a minute and try again."
+
+
+def status_problem(status_code: int, model: str) -> Exception | None:
+    """The error to raise for an HTTP error, or None for a busy server (5xx): then another model is tried."""
+    if status_code == 413:
+        return RequestTooLargeError("The request is larger than Groq's free tier allows.")
+    if status_code < 500:
+        return AIUnavailableError(f"{provider_name(model)} refused the request (error {status_code}).")
+    return None
+
+
+def request_options(
+    model: str, tools: list[dict], tool_choice: str | dict, json_mode: bool, max_tokens: int | None, effort: str
+) -> dict:
+    """The extra settings each model family needs for one chat request."""
+    options: dict = {"tools": tools, "tool_choice": tool_choice} if tools else {}
+    if json_mode:
+        options["response_format"] = {"type": "json_object"}
+    if is_gemini(model) and isinstance(tool_choice, dict) and tools:
+        options["tool_choice"] = "required"  # Gemini wants "required" to force the one tool given
+    if model.startswith("openai/gpt-oss"):
+        options["reasoning_effort"] = effort
+    elif model.startswith("qwen/"):
+        options["reasoning_format"] = "hidden"  # keep <think> text out of the answer
+    if max_tokens:
+        options["max_tokens"] = max_tokens
+    return options
 
 
 def tool_use_failure(error: groq.BadRequestError) -> str | None:
