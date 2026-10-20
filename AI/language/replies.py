@@ -25,6 +25,13 @@ NOT_FOUND = {
     "arabizi": "Ma la2et hal ma3lume bel files yalli 7ammaltun.",
 }
 
+TABLE_ONLY = {  # the model's text had numbers no tool returned, so only the exact rows are shown
+    "en": "Here are the matching rows, exactly as they appear in the files:",
+    "ar": "هذه هي الصفوف المطابقة، كما وردت في الملفات تماماً:",
+    "ar-lb": "هيدي الصفوف يلي بتطابق، متل ما هيي بالملفات:",
+    "arabizi": "Hayde l rows yalli btetaba2, metel ma hiye bel files:",
+}
+
 # (needs tables, question) per style: the cost question only when tables are loaded, the others need text.
 EXAMPLES = {
     "en": [(True, "List all cost items above SAR 1 million"), (False, "Summarize the scope of work"),
@@ -48,6 +55,6 @@ def example_questions(documents, style: str) -> list[str]:
 
 
 def fixed_reply(kind: str, style: str) -> str:
-    """The text for a greeting, out_of_scope or not_found reply."""
-    texts = {"greeting": GREETING, "out_of_scope": OUT_OF_SCOPE, "not_found": NOT_FOUND}[kind]
+    """The text for a greeting, out_of_scope, not_found or table_only reply."""
+    texts = {"greeting": GREETING, "out_of_scope": OUT_OF_SCOPE, "not_found": NOT_FOUND, "table_only": TABLE_ONLY}[kind]
     return texts.get(style, texts["en"])
