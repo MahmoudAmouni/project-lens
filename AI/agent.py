@@ -8,7 +8,7 @@ from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, shorten_old_r
 from AI.errors import QuestionStopped, RequestTooLargeError, ToolCallFormatError
 from AI.guards.answer_check import check_answer, sources_from_history, sources_from_tool
 from AI.guards.number_check import keep_tool_numbers
-from AI.language.replies import example_questions, fixed_reply
+from AI.language.replies import example_questions, fixed_reply, unreadable_note
 from AI.llm_client import LLMReply
 from AI.messages import assistant_message, build_messages, summary_messages
 from AI.prompts import (
@@ -103,7 +103,10 @@ class Agent:
         self.context.saved_tables.clear()  # an answer may only attach rows saved for this question (t1, t2...)
         answer = self.answer_from_documents(question_with_notes(question, route), history)
         answer = keep_tool_numbers(answer, self.tool_texts, self.context, list(self.context.saved_tables), route.style)
-        return check_answer(answer, self.consulted, fixed_reply("not_found", route.style)).with_style(route.style)
+        answer = check_answer(answer, self.consulted, fixed_reply("not_found", route.style))
+        if answer.kind == "not_found":  # the answer may be in a file that could not be read: say which
+            answer.answer += unreadable_note(answer.answer, self.context.documents, route.style)
+        return answer.with_style(route.style)
 
     def fixed_answer(self, kind: str, style: str, step: str) -> AgentAnswer:
         """A fixed reply (no AI writing) with example questions that fit the loaded files."""
