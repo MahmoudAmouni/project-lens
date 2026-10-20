@@ -75,6 +75,8 @@ def request_options(
 ) -> dict:
     """The extra settings each model family needs for one chat request."""
     options: dict = {"tools": tools, "tool_choice": tool_choice} if tools else {}
+    if not is_gemini(model):  # 0 = the same answer to the same question; Gemini 3 is made for its default (1.0)
+        options["temperature"] = 0
     if json_mode:
         options["response_format"] = {"type": "json_object"}
     if is_gemini(model) and isinstance(tool_choice, dict) and tools:
