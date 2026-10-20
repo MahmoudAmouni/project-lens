@@ -8,12 +8,14 @@ from Server.ingestion.excel_reader import read_excel
 from Server.ingestion.folder_scanner import FoundFile, scan_folder
 from Server.ingestion.models import STATUS_CORRUPT, STATUS_EMPTY, STATUS_TOO_LARGE, Document, FolderResult
 from Server.ingestion.pdf_reader import read_pdf
+from Server.ingestion.word_reader import read_word
 
 logger = logging.getLogger("projectlens")
 
 READERS: dict[str, Callable[[Path, Document], Document]] = {
     "pdf": read_pdf,
     "excel": read_excel,
+    "word": read_word,
 }
 
 
