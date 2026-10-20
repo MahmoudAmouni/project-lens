@@ -30,7 +30,7 @@ def over_million_filter(column: str = "amount") -> list[dict]:
 
 def test_list_documents_counts_readable_files(context):
     result = list_documents(context)
-    assert result.data["readable"] == 6
+    assert result.data["readable"] == 7
     boq = next(d for d in result.data["documents"] if d["name"] == "BOQ_Phase1.xlsx")
     assert {t["table_id"] for t in boq["tables"]} == {"BOQ", "Summary"}
 
