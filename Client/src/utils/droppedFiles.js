@@ -1,6 +1,6 @@
-// Turn dropped items or a chosen folder into a flat list of PDF/Excel files, walking into subfolders.
+// Turn dropped items or a chosen folder into a flat list of PDF/Excel/Word files, walking into subfolders.
 
-const SUPPORTED = /\.(pdf|xlsx|xls|xlsm)$/i;
+const SUPPORTED = /\.(pdf|xlsx|xls|xlsm|docx)$/i;
 
 // Hidden files (".DS_Store") and Office lock files ("~$Book.xlsx") are left out, like the Server does.
 function isWanted(name) {
