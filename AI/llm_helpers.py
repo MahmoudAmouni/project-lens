@@ -31,6 +31,14 @@ def retry_after_seconds(error: groq.RateLimitError) -> float:
     return float(found.group(1)) + 0.5 if found else DEFAULT_WAIT_SECONDS
 
 
+def rate_limit_message(daily_limit_hit: bool, wait_seconds: float) -> str:
+    """What the user reads when every model is rate limited for longer than we may wait."""
+    if daily_limit_hit:
+        minutes = max(1, round(wait_seconds / 60))
+        return f"Groq's free daily token limit is used up for all models. Try again in about {minutes} minutes."
+    return "Groq's free rate limit is reached. Wait a minute and try again."
+
+
 def tool_use_failure(error: groq.BadRequestError) -> str | None:
     """Groq answers 400 "tool_use_failed" or "output_parse_failed" when the model writes a broken reply."""
     body = error.body if isinstance(error.body, dict) else {}
