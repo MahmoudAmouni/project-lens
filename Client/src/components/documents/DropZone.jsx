@@ -1,11 +1,11 @@
-// "Or drop files here": drag PDF/Excel files or whole folders in, or choose files or a folder. Sends them to the upload endpoint.
+// "Or drop files here": drag PDF/Excel/Word files or whole folders in, or choose files or a folder. Sends them to the upload endpoint.
 
 import { FolderUp, UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { filesFromDrop, filesFromList } from "../../utils/droppedFiles";
 
-const ACCEPT = ".pdf,.xlsx,.xls,.xlsm";
+const ACCEPT = ".pdf,.xlsx,.xls,.xlsm,.docx";
 
 export default function DropZone({ disabled, onFiles }) {
   const { t } = useTranslation();
