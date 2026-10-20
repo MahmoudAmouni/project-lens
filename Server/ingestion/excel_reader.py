@@ -8,12 +8,14 @@ import pandas as pd
 from openpyxl.worksheet.worksheet import Worksheet
 
 from Server.ingestion.models import STATUS_CORRUPT, STATUS_EMPTY, STATUS_ENCRYPTED, Document, Table
+from Server.ingestion.money_parser import currency_in_notes
 from Server.ingestion.table_cleaner import clean_table
 from Server.ingestion.table_splitter import split_tables
 
 logger = logging.getLogger("projectlens")
 
 OLE_SIGNATURE = b"\xd0\xcf\x11\xe0"  # old .xls files and password protected .xlsx files start with this
+NOTE_ROWS = 12  # title and note rows (e.g. "All prices in USD") are looked for in the first rows
 FAST_MODE_MB = 2  # bigger files are read with calamine (much faster, but merged cells are not filled)
 
 
@@ -56,12 +58,23 @@ def read_with_pandas(path: Path, engine: str) -> dict[str, list[list[object]]]:
     return {name: frame.astype(object).where(frame.notna(), None).values.tolist() for name, frame in frames.items()}
 
 
+def note_texts(rows: list[list[object]]) -> list[str]:
+    """Title and note rows at the top of a sheet: rows holding one text only (a merged title repeats it)."""
+    texts = []
+    for row in rows[:NOTE_ROWS]:
+        values = {str(cell).strip() for cell in row if cell is not None and str(cell).strip()}
+        if len(values) == 1:
+            texts.append(values.pop())
+    return texts
+
+
 def sheet_to_tables(sheet_name: str, rows: list[list[object]]) -> list[Table]:
     """Clean one sheet into one table, or several when it holds separate tables. Row numbers stay exact."""
     parts = split_tables(rows)
+    note_currency = currency_in_notes([sheet_name, *note_texts(rows)])  # "All prices in US Dollars" above
     tables = []
     for number, (part_rows, row_numbers) in enumerate(parts, start=1):
-        cleaned = clean_table(part_rows, row_numbers=row_numbers)
+        cleaned = clean_table(part_rows, row_numbers=row_numbers, note_currency=note_currency)
         if cleaned is None:
             continue
         first, last = cleaned.data.index[0], cleaned.data.index[-1]
