@@ -34,15 +34,15 @@ def error_code(response) -> str:
 
 def test_health_reports_model_and_document_count(loaded):
     body = loaded.get("/api/health").json()
-    assert body["status"] == "ok" and body["documents_loaded"] == 6 and body["model"]
+    assert body["status"] == "ok" and body["documents_loaded"] == 7 and body["model"]
 
 
 def test_load_folder_returns_every_status_and_skipped_files(client):
     body = client.post("/api/documents/load", json={"folder_path": f'"{SAMPLE_DIR}"'}).json()  # quotes are ok
     statuses = {document["name"]: document["status"] for document in body["documents"]}
     assert statuses["Corrupt_Report.pdf"] == "corrupt" and statuses["Protected_Annex.pdf"] == "encrypted"
-    assert body["readable_count"] == 6
-    assert body["skipped"] == [{"name": "Meeting_Notes.docx", "reason": "Unsupported file type (.docx)"}]
+    assert body["readable_count"] == 7
+    assert body["skipped"] == [{"name": "Site_Photo.png", "reason": "Unsupported file type (.png)"}]
     boq = next(d for d in body["documents"] if d["name"] == "BOQ_Phase1.xlsx")
     assert boq["tables"][0]["rows"] == 18 and "Total Amount (SAR)" in boq["tables"][0]["columns"]
     assert client.get("/api/documents").json()["documents"] == body["documents"]
