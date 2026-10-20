@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, shorten_old_results
 from AI.errors import QuestionStopped, RequestTooLargeError, ToolCallFormatError
 from AI.guards.answer_check import check_answer, sources_from_history, sources_from_tool
+from AI.guards.number_check import keep_tool_numbers
 from AI.language.replies import example_questions, fixed_reply
 from AI.llm_client import LLMReply
 from AI.messages import assistant_message, build_messages, summary_messages
@@ -58,6 +59,7 @@ class Agent:
         self.llm = llm
         self.scope_mode = scope_mode  # "strict": off-topic questions get a fixed refusal; "relaxed": the agent tries
         self.consulted: list[dict] = []  # document locations the tools returned, for the answer check
+        self.tool_texts: list[str] = []  # what the tools returned, for the number check
         self.should_stop = None  # set during one question by ask()
         self.router = router or Router()  # Router() alone = the fail-safe style check, no AI call
         self.context = ToolContext(documents=documents, vector_store=vector_store)
@@ -94,7 +96,12 @@ class Agent:
             return self.fixed_answer("out_of_scope", route.style, "Not about the documents: answered without searching")
         # A follow-up about the last answer may reuse that answer's sources (see the answer check).
         self.consulted = sources_from_history(history) if route.intent == "follow_up" else []
+        self.tool_texts = []
+        tables_before = set(self.context.saved_tables)
         answer = self.answer_from_documents(question_with_notes(question, route), history)
+        new_tables = [table_id for table_id in self.context.saved_tables if table_id not in tables_before]
+        known = [question, str(history or ""), *self.tool_texts]
+        answer = keep_tool_numbers(answer, known, self.context, new_tables, route.style)
         return check_answer(answer, self.consulted, fixed_reply("not_found", route.style)).with_style(route.style)
 
     def fixed_answer(self, kind: str, style: str, step: str) -> AgentAnswer:
@@ -148,6 +155,7 @@ class Agent:
                 steps.pop()  # "Wrote the answer" is not a useful step to show
                 return AgentAnswer.from_final(outcome.result.data["final_answer"], steps, reply.model)
             messages.append({"role": "tool", "tool_call_id": call.id, "content": outcome.message})
+            self.tool_texts.append(outcome.message)
             if outcome.result is not None:
                 self.consulted += sources_from_tool(call.name, outcome.result.data)
         searches = sum(name == "search_documents" for name, _ in self.seen_calls)
