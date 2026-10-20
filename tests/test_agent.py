@@ -31,7 +31,7 @@ def test_tools_run_then_submit_answer_ends_the_loop(documents):
     answer = Agent(llm, documents).ask("List cost items above SAR 1 million")
     assert answer.answer == "Found **9 items**."
     assert answer.sources == [{"document": "BOQ_Phase1.xlsx", "location": "Sheet BOQ", "snippet": ""}]
-    assert answer.steps == ["Listed 11 documents (6 readable)", "Filtered BOQ_Phase1.xlsx · BOQ: 9 rows"]
+    assert answer.steps == ["Listed 12 documents (7 readable)", "Filtered BOQ_Phase1.xlsx · BOQ: 9 rows"]
     tool_message = llm.requests[2]["messages"][-1]
     assert tool_message["role"] == "tool" and tool_message["tool_call_id"] == "call_query_table"
     assert '"match_count": 9' in tool_message["content"]
