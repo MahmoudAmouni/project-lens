@@ -32,6 +32,13 @@ TABLE_ONLY = {  # the model's text had numbers no tool returned, so only the exa
     "arabizi": "Hayde l rows yalli btetaba2, metel ma hiye bel files:",
 }
 
+CLARIFY = {  # "?", "." or one letter: nothing to answer yet
+    "en": "Could you write your question in a few words? For example:",
+    "ar": "هل يمكنك كتابة سؤالك ببضع كلمات؟ مثلاً:",
+    "ar-lb": "فيك تكتبلي سؤالك بكم كلمة؟ مثلاً:",
+    "arabizi": "Fik tektebli so2alak b kam kelme? Masalan:",
+}
+
 # (needs tables, question) per style: the cost question only when tables are loaded, the others need text.
 EXAMPLES = {
     "en": [(True, "List all cost items above SAR 1 million"), (False, "Summarize the scope of work"),
@@ -55,6 +62,9 @@ def example_questions(documents, style: str) -> list[str]:
 
 
 def fixed_reply(kind: str, style: str) -> str:
-    """The text for a greeting, out_of_scope, not_found or table_only reply."""
-    texts = {"greeting": GREETING, "out_of_scope": OUT_OF_SCOPE, "not_found": NOT_FOUND, "table_only": TABLE_ONLY}[kind]
+    """The text for a greeting, out_of_scope, clarify, not_found or table_only reply."""
+    texts = {
+        "greeting": GREETING, "out_of_scope": OUT_OF_SCOPE, "clarify": CLARIFY, "not_found": NOT_FOUND,
+        "table_only": TABLE_ONLY,
+    }[kind]  # fmt: skip
     return texts.get(style, texts["en"])
