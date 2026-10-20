@@ -189,9 +189,7 @@ class LLMClient:
         options = request_options(model, tools, tool_choice, json_mode, max_tokens, self.reasoning_effort)
         client = self.gemini_client if model in self.gemini_models else self.client
         messages = messages_for_model(messages, gemini=client is self.gemini_client)
-        raw = client.chat.completions.with_raw_response.create(
-            model=model, messages=messages, temperature=0 if json_mode else 0.1, **options
-        )
+        raw = client.chat.completions.with_raw_response.create(model=model, messages=messages, **options)
         response = raw.parse()
         self.usage.record_reply(model, response.usage.total_tokens if response.usage else 0, raw.headers)
         message = response.choices[0].message
