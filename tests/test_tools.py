@@ -102,7 +102,7 @@ def test_query_pdf_table_cites_the_page(context):
     ("arguments", "message"),
     [
         ({"document": "nope.xlsx"}, "No document named"),
-        ({"document": "BOQ_Phase1.xlsx"}, "several tables"),
+        ({"document": "BOQ_Phase1.xlsx", "filters": over_million_filter("zzz")}, "No table in 'BOQ_Phase1.xlsx'"),
         ({"document": "BOQ_Phase1.xlsx", "table_id": "BOQ", "filters": over_million_filter("zzz")}, "No column"),
         ({"document": "BOQ_Phase1.xlsx", "table_id": "BOQ",
           "filters": [{"column": "amount", "operator": "like", "value": 1}]}, "Unknown operator"),
@@ -180,7 +180,7 @@ def test_query_all_tables_gives_grand_total_per_currency(context, document):
 
 
 def test_summary_and_totals_sheets_are_recognised():
-    from AI.tools.query_table import SUMMARY_SHEET
+    from AI.tools.table_choice import SUMMARY_SHEET
 
     assert all(SUMMARY_SHEET.search(name) for name in ["Summary", "Totals", "Recap", "ملخص"])
     assert not SUMMARY_SHEET.search("BOQ Phase 2")
