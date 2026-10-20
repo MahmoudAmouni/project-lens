@@ -60,7 +60,7 @@ def test_plain_text_reply_without_any_source_becomes_not_found(documents):
     llm = FakeLLM([text_reply("The contract is worth a lot.")])
     answer = Agent(llm, documents).ask("Summarize the contract")
     assert answer.kind == "not_found"
-    assert answer.answer == "I couldn't find this in the loaded documents."
+    assert answer.answer.startswith("I couldn't find this in the loaded documents.\n\nThese files could not be read")
     assert len(llm.requests) == 2  # one reminder to call submit_answer first
     assert "call submit_answer" in llm.requests[1]["messages"][-1]["content"]
 
