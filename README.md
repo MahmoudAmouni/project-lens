@@ -17,7 +17,7 @@
 - **Arabic screen**: one click switches the whole app to Arabic, right to left. In Arabic the app is called **بصيرة** ("insight").
 - **Remembers the conversation**: follow-ups like "write those dates in Arabic" reuse the previous answer and its sources. The chat is kept in the browser, so a reload does not lose it.
 - **Stays on topic**: off-topic questions ("tell me about cars") and attempts to change its rules get a short polite refusal with example questions, without spending tokens. Text inside documents is treated as data, never as instructions.
-- **Model picker with free limits**: choose the AI model in the top bar and see how much of its free daily limit is left. Google Gemini can be added as one more choice with a free key.
+- **Model picker with free limits**: choose the AI model in the top bar and see how much of its free daily limit is left. Google Gemini and OpenRouter's free models can be added as more choices with free keys.
 - **Stop button, dark mode**, and a terminal version of the same agent.
 
 ## Quick start
@@ -74,8 +74,10 @@ python -m Server.cli ./sample_docs
 | `MODEL` | `openai/gpt-oss-120b` | Main model |
 | `FALLBACK_MODEL` | `openai/gpt-oss-20b,qwen/qwen3.8-27b` | Backup models, used in turn when the main one hits a rate limit. `MODEL` and these are the choices in the app's model picker |
 | `GEMINI_API_KEY` | (none) | Optional Google Gemini key. Adds Gemini as one more choice in the model picker, and the last backup when every Groq model is rate limited. Only in `.env` |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | The Gemini model(s) offered in the picker |
+| `GEMINI_MODEL` | `gemini-3.5-flash,gemini-3.5-flash-lite` | The Gemini model(s) offered in the picker |
 | `GEMINI_DAILY_REQUESTS` | `250` | Gemini's free daily request limit, for the "requests left" number; corrected by Google's limit errors |
+| `OPENROUTER_API_KEY` | (none) | Optional OpenRouter key. Adds its free models to the picker, and as the backup after Gemini. Only in `.env` |
+| `OPENROUTER_MODEL` | `nvidia/nemotron-3-ultra-550b-a55b:free,minimax/minimax-m3.1-flash:free` | OpenRouter free model(s) with tool calling; names end with `:free` |
 | `USAGE_FILE` | `./.usage/token_usage.json` | Tokens used per model today, for the "tokens left" numbers in the model picker |
 | `DOCS_FOLDER` | `./sample_docs` | Folder loaded when the server starts (optional) |
 | `MAX_FILE_MB` | `100` | Bigger files are skipped and marked "too large" |
