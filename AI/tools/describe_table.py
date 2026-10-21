@@ -39,6 +39,8 @@ def describe_table(context: ToolContext, document: str, table_id: str | None = N
         "columns": [describe_column(table, str(column)) for column in table.data.columns],
         "first_rows": preview_rows(table),
     }
+    if getattr(table, "notes", None):
+        data["title_lines"] = table.notes  # e.g. "Revision A (SUPERSEDED)": tells which version this is
     if table.summary_rows:
         data["total_rows"] = f"Rows {table.summary_rows} are Total/Subtotal rows; query_table leaves them out."
     return ToolResult(data=data, step=f"Described {found.name} · {table.id} ({len(table.data)} rows)")
