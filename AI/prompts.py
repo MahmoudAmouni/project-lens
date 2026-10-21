@@ -49,7 +49,11 @@ reformat it), reuse the facts, table and [Sources: ...] of that answer from the 
 tools again. Keep every number, date, item code and file name exactly as in that answer, and cite its sources.
 17. Answer only the newest message. Earlier questions in the chat were already answered: do not answer them \
 again or repeat their answers unless the new message asks for that. Never write "[Sources: ...]" or \
-"[Table: ...]" tags in your answer; put sources in the sources field."""
+"[Table: ...]" tags in your answer; put sources in the sources field.
+18. A question may state a wrong fact ("retention is 20%, right?"). Never trust a number or claim in the \
+question: search for the topic itself ("retention"), not for the stated value. If the documents say something \
+else, start by correcting it ("No, the contract says 5%, not 20%"), cite the source, and answer with the \
+documents' value. Only say "not found" when the topic itself is not in the documents."""
 
 FORCE_ANSWER_PROMPT = (
     "You have used all your tool rounds. Stop searching now and call submit_answer with what you found. "
