@@ -89,3 +89,16 @@ def unreadable_note(answer_text: str, documents, style: str) -> str:
     listed = ", ".join(f"{document.name} ({document.status})" for document in unreadable[:MAX_UNREADABLE_LISTED])
     more = f" +{len(unreadable) - MAX_UNREADABLE_LISTED}" if len(unreadable) > MAX_UNREADABLE_LISTED else ""
     return f"\n\n{UNREADABLE_NOTE.get(style, UNREADABLE_NOTE['en'])} {listed}{more}"
+
+
+CURRENCY_NOTE = {  # the answer named a currency the documents never use, and it could not be corrected safely
+    "en": "Note: the documents give these amounts in {found}; {wrong} does not appear in them.",
+    "ar": "ملاحظة: المبالغ في المستندات بعملة {found}، ولا تذكر المستندات {wrong}.",
+    "ar-lb": "ملاحظة: المبالغ بالملفات بالـ {found}، والملفات ما بتذكر {wrong}.",
+    "arabizi": "Note: l mabaleg bel files bel {found}, w l files ma btezkor {wrong}.",
+}
+
+
+def currency_note(found: list[str], wrong: list[str], style: str) -> str:
+    text = CURRENCY_NOTE.get(style, CURRENCY_NOTE["en"])
+    return "\n\n" + text.format(found=" / ".join(found) or "-", wrong=" / ".join(wrong))
