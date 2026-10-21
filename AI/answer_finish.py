@@ -1,10 +1,12 @@
 """The checks every document answer passes before the user sees it, in order:
 
-clean history tags -> numbers must come from tools -> facts need sources -> a whole "not found" shows no sources
--> attach the saved rows the answer uses -> name the unreadable files when something was not found.
+clean history tags -> numbers and currencies must come from tools -> facts need sources
+-> a whole "not found" shows no sources -> attach the saved rows the answer uses
+-> name the unreadable files when something was not found.
 """
 
 from AI.guards.answer_check import check_answer
+from AI.guards.currency_check import keep_tool_currencies
 from AI.guards.number_check import keep_tool_numbers, known_numbers, table_text
 from AI.language.not_found_words import opens_with_not_found, says_not_found
 from AI.language.replies import fixed_reply, unreadable_note
@@ -28,6 +30,7 @@ def finish_answer(answer, question: str, context: ToolContext, tool_texts: list[
     """Run every check on a document answer; returns the answer the user will see."""
     answer.answer = without_history_tags(answer.answer)  # plain-text replies skip submit_answer's cleaning
     answer = keep_tool_numbers(answer, tool_texts, context, list(context.saved_tables), style)
+    answer = keep_tool_currencies(answer, tool_texts, style)  # "86,400,000 SAR" for an AED contract
     answer = check_answer(answer, consulted, fixed_reply("not_found", style))
     if answer.kind == "answer" and not answer.table and opens_with_not_found(answer.answer, question):
         answer.kind, answer.sources = "not_found", []  # nothing was found: a searched file is not a source
