@@ -6,6 +6,7 @@ import groq
 
 from AI.errors import AIUnavailableError, RequestTooLargeError
 from AI.gemini_client import is_gemini
+from AI.openrouter_client import is_openrouter
 
 DEFAULT_WAIT_SECONDS = 5.0
 RETRY_IN_PATTERN = re.compile(r"retry in ([\d.]+)s", re.IGNORECASE)
@@ -17,11 +18,16 @@ def model_names(text: str | None) -> list[str]:
 
 
 def key_name(model: str) -> str:
-    return "GEMINI_API_KEY" if is_gemini(model) else "GROQ_API_KEY"
+    return f"{provider_name(model).upper()}_API_KEY"
 
 
 def provider_name(model: str) -> str:
-    return "Gemini" if is_gemini(model) else "Groq"
+    return "Gemini" if is_gemini(model) else "OpenRouter" if is_openrouter(model) else "Groq"
+
+
+def is_daily_limit(error: groq.RateLimitError) -> bool:
+    """Groq says "per day", Gemini "PerDay", OpenRouter "free-models-per-day"."""
+    return any(mark in str(error) for mark in ("per day", "PerDay", "per-day"))
 
 
 def providers_of(models: list[str]) -> str:
@@ -83,7 +89,7 @@ def request_options(
         options["tool_choice"] = "required"  # Gemini wants "required" to force the one tool given
     if model.startswith("openai/gpt-oss"):
         options["reasoning_effort"] = effort
-    elif model.startswith("qwen/"):
+    elif model.startswith("qwen/") and not is_openrouter(model):
         options["reasoning_format"] = "hidden"  # keep <think> text out of the answer
     if max_tokens:
         options["max_tokens"] = max_tokens
