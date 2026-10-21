@@ -29,6 +29,8 @@ SCALE = {
 # "above a million", "aktar men malyon", "أكثر من مليون": the scale word alone means one of it.
 SCALE_WORD_ALONE = re.compile(r"(?<![\d\w])(thousand|million|billion|ألف|مليون|مليار|malyon|alf)(?!\w)", re.IGNORECASE)
 SMALLEST_CHECKED = 10
+SENTENCE_END = re.compile(r"(?<=[.!?؟])\s+")
+MIN_KEPT_CHARS = 25  # less than this left after removing made-up sentences is not an answer any more
 
 
 def numbers_in(text: str) -> list[tuple[float, float, int | None]]:
@@ -78,10 +80,21 @@ def table_text(table: dict | None) -> str:
     return " ".join(str(cell) for row in (table or {}).get("rows", []) for cell in row if cell is not None)
 
 
+def without_made_up_sentences(text: str, known: set[float]) -> str:
+    """The text without the sentences (or list lines) that hold a number no tool returned; the rest stays.
+    "The Contract Sum is AED 86,400,000. Payment is due in 28 days." -> "The Contract Sum is AED 86,400,000."."""
+    lines = []
+    for line in text.splitlines():
+        kept = " ".join(part for part in SENTENCE_END.split(line) if not unsupported_numbers(part, known))
+        if kept.strip() or not line.strip():
+            lines.append(kept)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
 def keep_tool_numbers(answer, known_texts: list[str], context, new_table_ids: list[str], style: str):
-    """An answer with numbers no tool returned loses its text: the exact saved rows are shown instead,
-    or the fixed "not found" reply when this question saved no rows. A "not found" answer is checked too,
-    so marking an answer not_found never lets made-up numbers through."""
+    """Numbers no tool returned never reach the user. Only the sentences holding them are removed when the rest
+    still says something; a made-up table becomes the saved rows. When nothing useful is left, the exact saved
+    rows are shown, or the fixed "not found" reply. A "not found" answer is checked too."""
     if answer.kind not in ("answer", "not_found"):
         return answer
     known = known_numbers([*known_texts, *(table_text(table) for table in context.saved_tables.values())])
@@ -89,11 +102,22 @@ def keep_tool_numbers(answer, known_texts: list[str], context, new_table_ids: li
     if not made_up:
         return answer
     logger.warning("Answer had numbers no tool returned: %s", made_up[:10])
+    if answer.table and unsupported_numbers(table_text(answer.table), known):  # a typed table: use the saved rows
+        answer.table = combine_saved_tables(context, new_table_ids[-1:]) if new_table_ids else None
+        answer.steps.append("Replaced a table that had numbers the tools did not return")
+    if not unsupported_numbers(answer.answer, known):
+        return answer  # only the table was wrong, and it is replaced
+    kept = without_made_up_sentences(answer.answer, known) if answer.kind == "answer" else ""
+    if len(kept) >= MIN_KEPT_CHARS:  # the rest still answers: lose one sentence, not the whole answer
+        answer.answer = kept
+        answer.steps.append("Removed a sentence with a number the tools did not return")
+        if new_table_ids and not answer.table:  # removed lines were often made-up rows: show the real ones
+            answer.table = combine_saved_tables(context, new_table_ids[-1:])
+        return answer
     answer.steps.append("Removed numbers the tools did not return")
     answer.sources = []
-    if new_table_ids:  # keep the model's chosen table when its own numbers are all real; else the last saved rows
-        table_is_real = answer.table and not unsupported_numbers(table_text(answer.table), known)
-        answer.table = answer.table if table_is_real else combine_saved_tables(context, new_table_ids[-1:])
+    if new_table_ids:
+        answer.table = answer.table or combine_saved_tables(context, new_table_ids[-1:])
         answer.answer = fixed_reply("table_only", style)
     else:
         answer.kind, answer.table, answer.answer = "not_found", None, fixed_reply("not_found", style)
