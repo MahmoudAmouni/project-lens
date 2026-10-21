@@ -1,13 +1,15 @@
 """Keep every request under Groq's free-tier limit (~8,000 tokens per minute, and one request can't be bigger).
 
 Tool results the model has already read are shortened first; if the request is still too big, the
-longest results are cut further until it fits.
+longest results are cut further until it fits. Gemini and OpenRouter take far bigger requests: for them old
+results stay whole, so the model can still compare rows it read rounds ago (cutting them made it guess numbers).
 """
 
 import json
 
 OLD_RESULT_CHARS = 1_500  # results from earlier rounds, once the model has read them
 REQUEST_TOKEN_BUDGET = 5_500  # leaves room for the reply inside the 8,000 tokens per minute
+BIG_REQUEST_TOKEN_BUDGET = 60_000  # Gemini and OpenRouter free models: far bigger limits, still a sane request
 MIN_RESULT_CHARS = 300
 CHARS_PER_TOKEN = 3.2  # rough and on the safe side (JSON and Arabic use more tokens per character)
 SHORTENED = ' ..."[shortened]"'
@@ -29,6 +31,14 @@ def shorten_old_results(messages: list[dict]) -> None:
     for message in messages[:last_assistant]:
         if message["role"] == "tool":
             shorten(message, OLD_RESULT_CHARS)
+
+
+def request_budget(llm) -> int:
+    """Tokens the next request may use: small for Groq, big when the model about to answer is a backup provider."""
+    pick_model = getattr(llm, "pick_model", None)
+    if pick_model is None:
+        return REQUEST_TOKEN_BUDGET
+    return BIG_REQUEST_TOKEN_BUDGET if pick_model()[0] in getattr(llm, "backup_models", []) else REQUEST_TOKEN_BUDGET
 
 
 def fit_to_budget(messages: list[dict], tools: list[dict], budget: int = REQUEST_TOKEN_BUDGET) -> None:
