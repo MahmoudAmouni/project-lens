@@ -10,9 +10,10 @@ NOT_FOUND_WORDS = re.compile(
     r"\b(could ?n[o']t|can ?n?[o']t|did ?n[o']t|was unable to|unable to) (find|locate|confirm|determine|retrieve)\b"
     r"|\bno (information|mention|data|record|details?) (on|about|for|of|regarding)\b"
     r"|\b(is|are|was|were) not (mentioned|stated|specified|given|found|available|included)\b"
-    r"|\bnot found in\b"
+    r"|\bnot found in\b|\b(do|does|did) ?n[o']t (contain|include|mention|have)\b|\bcontains? no\b"
     r"|لم اجد|لم يتم العثور|لا يوجد|لا توجد|غير موجود|غير مذكور|ما لقيت|مش موجود|مش مذكور"
-    r"|\b(ma la2et|ma l2it|mesh mawjoud|msh mawjoud|mish mawjoud)\b",
+    r"|لا (تحتوي|يحتوي|تتضمن|يتضمن)|ما (فيها|فيه|في) (اي|ولا) |ما بتحتوي|ما بيحتوي"
+    r"|\b(ma la2et|ma l2it|mesh mawjoud|msh mawjoud|mish mawjoud|ma fiha|ma fi ay)\b",
     re.IGNORECASE,
 )
 
@@ -22,7 +23,7 @@ def says_not_found(answer_text: str) -> bool:
     return bool(NOT_FOUND_WORDS.search(normalize_arabic(answer_text or "")))
 
 
-NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+NUMBER = re.compile(r"(?<![a-zA-Z])\d+(?:[.,]\d+)*(?![a-zA-Z])")  # not the "3" of Arabizi "ma3lume"
 FIRST_SENTENCE = re.compile(r"^.*?(?:[.!?؟](?:\s|$)|\n|$)", re.DOTALL)
 
 
