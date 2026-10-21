@@ -8,6 +8,7 @@ from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, shorten_old_r
 from AI.errors import QuestionStopped, RequestTooLargeError, ToolCallFormatError
 from AI.guards.answer_check import check_answer, sources_from_history, sources_from_tool
 from AI.guards.number_check import keep_tool_numbers
+from AI.guards.scope_check import document_words, mentions_documents
 from AI.language.replies import example_questions, fixed_reply, unreadable_note
 from AI.llm_client import LLMReply
 from AI.messages import assistant_message, build_messages, summary_messages
@@ -64,6 +65,7 @@ class Agent:
         self.router = router or Router()  # Router() alone = the fail-safe style check, no AI call
         self.context = ToolContext(documents=documents, vector_store=vector_store)
         self.overview = document_overview(documents)
+        self.vocabulary = document_words(documents)  # a question using these words is never refused
         self.seen_calls: set[tuple[str, str]] = set()
         self.search_reminder_sent = False
 
@@ -90,6 +92,10 @@ class Agent:
     def route_and_answer(self, question: str, history: list[dict] | None, ui_language: str | None) -> AgentAnswer:
         route = self.router.route(question, history, ui_language, self.overview)
         self.check_stop()
+        asked = " ".join([question, route.question_en, *route.search_terms])  # the router's English rewrite too
+        if route.intent == "off_topic" and mentions_documents(asked, self.vocabulary):
+            logger.info("Router said off_topic, but the question uses the documents' words: answering it")
+            route.intent = "document_question"
         if route.intent == "greeting":
             return self.fixed_answer("greeting", route.style, "Greeting: answered without searching")
         if route.intent == "clarify":
