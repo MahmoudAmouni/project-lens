@@ -5,6 +5,7 @@ To add a tool: write AI/tools/<name>.py, add it to TOOLS below, and add one line
 
 from collections.abc import Callable
 
+from AI.tools.calculate import calculate
 from AI.tools.describe_table import describe_table
 from AI.tools.find_dates import find_dates
 from AI.tools.list_documents import list_documents
@@ -97,9 +98,10 @@ TOOLS: dict[str, tuple[Callable, dict]] = {
             "query_table",
             "Exact filter over EVERY row. Returns match count, sums per column (with currency), the first rows "
             "with their source, and a table_result_id. Use for all amounts, totals, counts and thresholds. "
-            "Leave out document to search every table in every file at once.",
+            "A file without table_id searches every sheet of that file; leave out document to search every "
+            "table in every file. With sort_by, best_rows_of_all_tables ranks the rows of all tables together.",
             {
-                "document": {**DOCUMENT, "description": "One file, or leave out / '*' for every table."},
+                "document": {**DOCUMENT, "description": "One file (all its sheets), or leave out / '*' for all."},
                 "table_id": TABLE_ID,
                 "filters": {"type": "array", "items": FILTER, "description": "All must match (AND)."},
                 "columns": {"type": "array", "items": {"type": "string"}, "description": "Columns to return."},
@@ -116,6 +118,19 @@ TOOLS: dict[str, tuple[Callable, dict]] = {
             "find_dates",
             "Every date, quarter and time period (e.g. 'within 28 days') with its sentence and page.",
             {"document": {**DOCUMENT, "description": "Optional: one file. Leave out for all files."}},
+        ),
+    ),
+    "calculate": (
+        calculate,
+        schema(
+            "calculate",
+            "Exact arithmetic (+ - * / brackets, 15% works) on numbers the tools returned: percentages, shares, "
+            "differences, VAT, averages. Copy the numbers exactly from tool results; other numbers are refused.",
+            {
+                "expression": {"type": "string", "description": "e.g. '45425725 * 15%' or '(570000 - 126000) / 2'"},
+                "label": {"type": "string", "description": "What it is, e.g. 'VAT on the BOQ total'."},
+            },
+            ["expression"],
         ),
     ),
     "submit_answer": (

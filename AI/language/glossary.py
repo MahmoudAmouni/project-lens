@@ -1,5 +1,7 @@
 """Lebanese, Arabizi and project words: helps detect the user's style and widens keyword search."""
 
+import re
+
 # Arabizi (Latin letters) -> (Lebanese in Arabic letters, English meaning)
 ARABIZI = {
     "shu": ("شو", "what"), "chou": ("شو", "what"), "sho": ("شو", "what"),
@@ -33,6 +35,32 @@ PROJECT_TERMS = {
 }  # fmt: skip
 ARABIC_TO_ENGLISH = {arabic: english for english, arabic in PROJECT_TERMS.items()}
 
+# Words that mean the same. Column names: a question says "rate", the sheet says "Unit Price".
+COLUMN_SYNONYMS = [
+    ("rate", "unit rate", "unit price", "price each", "unit cost"),
+    ("qty", "quantity", "quantities"),
+    ("amount", "total amount", "total price", "line total", "total cost", "value"),
+    ("description", "item description", "particulars", "desc"),
+    ("unit", "uom", "unit of measure"),
+]
+# Contract terms: also added to text search, so "LDs" finds "liquidated damages".
+TERM_SYNONYMS = [
+    ("retention", "retainage", "retention money"),
+    ("variation", "variation order", "change order", "vo"),
+    ("liquidated damages", "lds", "delay damages", "delay penalty"),
+    ("extension of time", "eot", "time extension"),
+    ("defects liability period", "dlp", "defects notification period", "warranty period"),
+    ("advance payment", "down payment", "mobilization advance"),
+    ("performance bond", "performance guarantee", "performance security"),
+]
+SYNONYM_GROUPS = COLUMN_SYNONYMS + TERM_SYNONYMS
+
+
+def synonyms(term: str) -> list[str]:
+    """Other words for the same thing: "rate" -> ["unit rate", "unit price", ...]. Empty when none are known."""
+    wanted = " ".join(str(term).lower().split())
+    return [word for group in SYNONYM_GROUPS if wanted in group for word in group if word != wanted]
+
 
 def related_terms(text: str) -> list[str]:
     """Translations of project and Arabizi words found in the text (to search both languages)."""
@@ -46,4 +74,7 @@ def related_terms(text: str) -> list[str]:
     for word in lowered.split():
         if word in ARABIZI_CONTENT_WORDS:
             found.append(ARABIZI[word][1])
+    for group in TERM_SYNONYMS:  # long terms and short codes ("lds", "eot") as whole words only
+        if any(re.search(rf"\b{re.escape(word)}\b", lowered) for word in group):
+            found.extend(word for word in group if len(word) > 3 and word not in lowered)
     return list(dict.fromkeys(found))

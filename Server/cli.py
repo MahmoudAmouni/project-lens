@@ -100,7 +100,7 @@ def main() -> None:
         return
     show_folder(result)
     if not any(doc.is_readable for doc in result.documents):
-        console.print("[yellow]No readable PDF or Excel files in this folder.[/]")
+        console.print("[yellow]No readable PDF, Excel or Word files in this folder.[/]")
         return
     try:
         llm = LLMClient(settings.groq_api_key, settings.model, settings.fallback_model)

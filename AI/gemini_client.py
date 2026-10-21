@@ -22,3 +22,29 @@ def fix_gemini_path(request: httpx.Request) -> None:
 def make_gemini_client(api_key: str, timeout_seconds: float) -> groq.Groq:
     http_client = httpx.Client(event_hooks={"request": [fix_gemini_path]}, timeout=timeout_seconds)
     return groq.Groq(api_key=api_key, base_url=GEMINI_BASE_URL, max_retries=0, http_client=http_client)
+
+
+def extra_content_of(tool_call) -> dict | None:
+    """Gemini's `extra_content` (the thought signature) on a returned tool call; None for Groq."""
+    return (getattr(tool_call, "model_extra", None) or {}).get("extra_content")
+
+
+# Google's documented placeholder for tool calls that another model made (Gemini did not sign them).
+PLACEHOLDER_SIGNATURE = {"google": {"thought_signature": "skip_thought_signature_validator"}}
+
+
+def messages_for_model(messages: list[dict], gemini: bool) -> list[dict]:
+    """Gemini 3 needs the thought signature of every earlier tool call back (`extra_content`); calls a Groq model
+    made get the placeholder. Groq refuses that unknown field, so it is removed before a Groq call."""
+    fixed = []
+    for message in messages:
+        if message.get("tool_calls"):
+            calls = [
+                {**call, "extra_content": call.get("extra_content") or PLACEHOLDER_SIGNATURE}
+                if gemini
+                else {key: value for key, value in call.items() if key != "extra_content"}
+                for call in message["tool_calls"]
+            ]
+            message = {**message, "tool_calls": calls}
+        fixed.append(message)
+    return fixed

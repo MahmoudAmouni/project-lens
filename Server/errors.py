@@ -29,7 +29,7 @@ def folder_empty(message: str) -> ApiError:
     return ApiError("FOLDER_EMPTY", message, 422)
 
 
-def no_documents_loaded(message: str = "Load a folder with PDF or Excel files first.") -> ApiError:
+def no_documents_loaded(message: str = "Load a folder with PDF, Excel or Word files first.") -> ApiError:
     return ApiError("NO_DOCUMENTS_LOADED", message, 409)
 
 

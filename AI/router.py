@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 from AI.errors import QuestionStopped
 from AI.guards.injection_check import looks_like_injection
-from AI.language.style_detect import detect_style, looks_like_greeting
+from AI.language.style_detect import detect_style, is_too_short, looks_like_greeting
 from AI.prompts import ROUTER_PROMPT
 
 logger = logging.getLogger("projectlens")
@@ -19,6 +19,7 @@ logger = logging.getLogger("projectlens")
 STYLES = {"en", "ar", "ar-lb", "arabizi"}
 ARABIC_SCRIPT = {"ar", "ar-lb"}
 INTENTS = {"document_question", "follow_up", "greeting", "off_topic", "injection"}
+PLAIN_INTENTS = ("injection", "greeting", "clarify")  # found by plain checks, no AI needed
 HISTORY_TURNS = 4
 MAX_TERMS = 8
 MAX_OVERVIEW_CHARS = 800  # the list of loaded files, so the router knows what the documents cover
@@ -27,7 +28,7 @@ MAX_OVERVIEW_CHARS = 800  # the list of loaded files, so the router knows what t
 @dataclass
 class Route:
     style: str  # en | ar | ar-lb | arabizi
-    intent: str  # document_question | follow_up | greeting | off_topic | injection
+    intent: str  # document_question | follow_up | greeting | off_topic | injection | clarify
     question_en: str = ""
     question_ar: str = ""
     search_terms: list[str] = field(default_factory=list)
@@ -39,19 +40,22 @@ class Route:
 
 
 def fallback_route(question: str, ui_language: str | None) -> Route:
-    """No AI: the style from the letters used; an injection, a plain greeting, or else a document question."""
+    """No AI: the style from the letters used; an injection, a plain greeting, too short to answer ("?"),
+    or else a document question."""
     if looks_like_injection(question):
         intent = "injection"
     elif looks_like_greeting(question):
         intent = "greeting"
+    elif is_too_short(question):
+        intent = "clarify"
     else:
         intent = "document_question"
     return Route(style=detect_style(question, ui_language), intent=intent)
 
 
 def with_plain_checks(route: Route, fallback: Route) -> Route:
-    """An injection or a plain greeting found without AI wins over the model's intent."""
-    if fallback.intent in ("injection", "greeting"):
+    """An injection, a plain greeting or a too-short message found without AI wins over the model's intent."""
+    if fallback.intent in PLAIN_INTENTS:
         route.intent = fallback.intent
     return route
 
@@ -98,8 +102,8 @@ class Router:
         self, question: str, history: list[dict] | None = None, ui_language: str | None = None, overview: str = ""
     ) -> Route:
         fallback = fallback_route(question, ui_language)
-        if self.llm is None or fallback.intent in ("greeting", "injection"):
-            return fallback  # plain greetings and injections are certain without AI: instant, and no tokens used
+        if self.llm is None or fallback.intent in PLAIN_INTENTS:
+            return fallback  # certain without AI: instant, and no tokens used
         messages = [
             {"role": "system", "content": ROUTER_PROMPT},
             {"role": "user", "content": router_message(question, history or [], ui_language, overview)},

@@ -37,6 +37,14 @@ export function isSummableColumn(column, rows, index) {
   return isNumberColumn(rows, index) && AMOUNT_NAME.test(column) && !NOT_AN_AMOUNT.test(column);
 }
 
+/** True when every row comes from the same file ("BOQ.xlsx · BOQ · row 4" -> "BOQ.xlsx"), or there is no Source
+ * column. Rows from different files are never added into one total: they may be different things or currencies. */
+export function rowsFromOneFile(columns, rows) {
+  const source = columns.indexOf("Source");
+  if (source < 0) return true;
+  return new Set(rows.map((row) => String(row[source] ?? "").split(" · ")[0])).size <= 1;
+}
+
 export function sumColumn(rows, index) {
   return rows.reduce((total, row) => total + (typeof row[index] === "number" ? row[index] : 0), 0);
 }

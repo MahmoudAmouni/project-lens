@@ -38,6 +38,6 @@ class ChatResponse(BaseModel):
     sources: list[SourceInfo]
     steps: list[str]  # "How I found this"
     model: str
-    kind: Literal["answer", "not_found", "out_of_scope", "greeting"] = "answer"
+    kind: Literal["answer", "not_found", "out_of_scope", "greeting", "clarify"] = "answer"
     style: Literal["en", "ar", "ar-lb", "arabizi"] = "en"  # how the user wrote; the answer uses the same style
     suggestions: list[str] = Field(default_factory=list)  # example questions for greeting / out_of_scope

@@ -31,7 +31,7 @@ def test_tools_run_then_submit_answer_ends_the_loop(documents):
     answer = Agent(llm, documents).ask("List cost items above SAR 1 million")
     assert answer.answer == "Found **9 items**."
     assert answer.sources == [{"document": "BOQ_Phase1.xlsx", "location": "Sheet BOQ", "snippet": ""}]
-    assert answer.steps == ["Listed 11 documents (6 readable)", "Filtered BOQ_Phase1.xlsx · BOQ: 9 rows"]
+    assert answer.steps == ["Listed 12 documents (7 readable)", "Filtered BOQ_Phase1.xlsx · BOQ: 9 rows"]
     tool_message = llm.requests[2]["messages"][-1]
     assert tool_message["role"] == "tool" and tool_message["tool_call_id"] == "call_query_table"
     assert '"match_count": 9' in tool_message["content"]
@@ -60,7 +60,7 @@ def test_plain_text_reply_without_any_source_becomes_not_found(documents):
     llm = FakeLLM([text_reply("The contract is worth a lot.")])
     answer = Agent(llm, documents).ask("Summarize the contract")
     assert answer.kind == "not_found"
-    assert answer.answer == "I couldn't find this in the loaded documents."
+    assert answer.answer.startswith("I couldn't find this in the loaded documents.\n\nThese files could not be read")
     assert len(llm.requests) == 2  # one reminder to call submit_answer first
     assert "call submit_answer" in llm.requests[1]["messages"][-1]["content"]
 

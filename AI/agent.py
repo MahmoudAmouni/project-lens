@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, shorten_old_results
 from AI.errors import QuestionStopped, RequestTooLargeError, ToolCallFormatError
 from AI.guards.answer_check import check_answer, sources_from_history, sources_from_tool
-from AI.language.replies import example_questions, fixed_reply
+from AI.guards.number_check import keep_tool_numbers
+from AI.language.replies import example_questions, fixed_reply, unreadable_note
 from AI.llm_client import LLMReply
 from AI.messages import assistant_message, build_messages, summary_messages
 from AI.prompts import (
@@ -58,6 +59,7 @@ class Agent:
         self.llm = llm
         self.scope_mode = scope_mode  # "strict": off-topic questions get a fixed refusal; "relaxed": the agent tries
         self.consulted: list[dict] = []  # document locations the tools returned, for the answer check
+        self.tool_texts: list[str] = []  # the question, history and tool results, for the number check
         self.should_stop = None  # set during one question by ask()
         self.router = router or Router()  # Router() alone = the fail-safe style check, no AI call
         self.context = ToolContext(documents=documents, vector_store=vector_store)
@@ -90,12 +92,21 @@ class Agent:
         self.check_stop()
         if route.intent == "greeting":
             return self.fixed_answer("greeting", route.style, "Greeting: answered without searching")
+        if route.intent == "clarify":
+            return self.fixed_answer("clarify", route.style, "Too short to answer: asked for the question")
         if route.intent == "injection" or (route.intent == "off_topic" and self.scope_mode == "strict"):
             return self.fixed_answer("out_of_scope", route.style, "Not about the documents: answered without searching")
         # A follow-up about the last answer may reuse that answer's sources (see the answer check).
         self.consulted = sources_from_history(history) if route.intent == "follow_up" else []
+        self.tool_texts = [question, str(history or "")]  # grows with every tool result
+        self.context.known_texts = self.tool_texts  # the same list: calculate may use only these numbers
+        self.context.saved_tables.clear()  # an answer may only attach rows saved for this question (t1, t2...)
         answer = self.answer_from_documents(question_with_notes(question, route), history)
-        return check_answer(answer, self.consulted, fixed_reply("not_found", route.style)).with_style(route.style)
+        answer = keep_tool_numbers(answer, self.tool_texts, self.context, list(self.context.saved_tables), route.style)
+        answer = check_answer(answer, self.consulted, fixed_reply("not_found", route.style))
+        if answer.kind == "not_found":  # the answer may be in a file that could not be read: say which
+            answer.answer += unreadable_note(answer.answer, self.context.documents, route.style)
+        return answer.with_style(route.style)
 
     def fixed_answer(self, kind: str, style: str, step: str) -> AgentAnswer:
         """A fixed reply (no AI writing) with example questions that fit the loaded files."""
@@ -148,6 +159,7 @@ class Agent:
                 steps.pop()  # "Wrote the answer" is not a useful step to show
                 return AgentAnswer.from_final(outcome.result.data["final_answer"], steps, reply.model)
             messages.append({"role": "tool", "tool_call_id": call.id, "content": outcome.message})
+            self.tool_texts.append(outcome.message)
             if outcome.result is not None:
                 self.consulted += sources_from_tool(call.name, outcome.result.data)
         searches = sum(name == "search_documents" for name, _ in self.seen_calls)

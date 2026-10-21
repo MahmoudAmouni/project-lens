@@ -7,12 +7,12 @@ ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹٫٬", "0
 
 # Words with letters only are matched as whole words; symbols are matched anywhere.
 CURRENCY_WORDS = {
-    "SAR": ["sar", "s.r.", "sr", "ر.س", "ريال", "riyal"],
-    "USD": ["usd", "us$", "$", "dollar"],
-    "EUR": ["eur", "€", "euro"],
-    "AED": ["aed", "dirham", "درهم"],
+    "SAR": ["sar", "s.r.", "sr", "ر.س", "ريال", "riyal", "riyals"],
+    "USD": ["usd", "us$", "$", "dollar", "dollars", "دولار"],
+    "EUR": ["eur", "€", "euro", "euros", "يورو"],
+    "AED": ["aed", "dirham", "dirhams", "درهم"],
     "GBP": ["gbp", "£"],
-    "EGP": ["egp"],
+    "EGP": ["egp", "جنيه"],
 }
 
 # Latin + Arabic letters (U+0600 to U+06FF), used to find whole words.
@@ -41,9 +41,12 @@ PLAIN_NUMBER = re.compile(r"-?\d+(\.\d+)?")  # fast path: most cells are already
 
 
 def word_pattern(words: list[str]) -> str:
-    """Letter words must stand alone ("sar" but not "sars"); symbols like "$" match anywhere. Longest first."""
+    """Latin words must stand alone ("sar" but not "sars"); symbols like "$" and Arabic words match anywhere,
+    because Arabic joins prefixes to words ("بالدولار" = "in dollars"). Longest first."""
     parts = [
-        rf"(?<![{WORD_LETTERS}]){re.escape(word)}(?![{WORD_LETTERS}])" if word.isalpha() else re.escape(word)
+        rf"(?<![{WORD_LETTERS}]){re.escape(word)}(?![{WORD_LETTERS}])"
+        if word.isalpha() and word.isascii()
+        else re.escape(word)
         for word in sorted(words, key=len, reverse=True)
     ]
     return "|".join(parts)
@@ -58,6 +61,13 @@ def detect_currency(text: str) -> str | None:
     """Return a currency code ("SAR", "USD", ...) mentioned in the text, or None."""
     lowered = str(text).lower()
     return next((code for code, pattern in CURRENCY_PATTERNS.items() if pattern.search(lowered)), None)
+
+
+def currency_in_notes(texts: list[str]) -> str | None:
+    """The one currency named in title or note text ("All prices are in US Dollars"). None when the notes
+    name no currency or several, because then they do not say which column is in which."""
+    found = {code for text in texts if (code := detect_currency(text))}
+    return found.pop() if len(found) == 1 else None
 
 
 def strip_currency(text: str) -> str:

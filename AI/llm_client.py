@@ -1,9 +1,10 @@
-"""The one place that talks to the AI models: Groq, and Google Gemini when the user picks it.
+"""The one place that talks to the AI models: Groq, and Google Gemini when its key is set.
 
 Groq's free tier allows about 8,000 tokens per minute per model. On a rate limit we switch to the
 other model (it has its own limit); when both are limited we wait as long as Groq asks, then retry.
 The user may pick which model goes first; every reply's token use is counted (see usage_tracker.py).
-Gemini is only used when the user picks it (the Groq models stay its backups); it is never an automatic backup.
+Gemini is used when the user picks it, and as the last resort while every Groq model is rate limited.
+A busy model (server error 5xx, e.g. Gemini 503 "overloaded") is rested for a while, like a rate limit.
 """
 
 import json
@@ -12,18 +13,23 @@ from dataclasses import dataclass, field
 
 import groq
 
-from AI.errors import (
-    AIRateLimitedError,
-    AIUnavailableError,
-    QuestionStopped,
-    RequestTooLargeError,
-    ToolCallFormatError,
+from AI.errors import AIRateLimitedError, AIUnavailableError, QuestionStopped, ToolCallFormatError
+from AI.gemini_client import extra_content_of, is_gemini, make_gemini_client, messages_for_model
+from AI.llm_helpers import (
+    DEFAULT_WAIT_SECONDS,
+    key_name,
+    model_names,
+    provider_name,
+    rate_limit_message,
+    request_options,
+    retry_after_seconds,
+    status_problem,
+    tool_use_failure,
 )
-from AI.gemini_client import is_gemini, make_gemini_client
-from AI.llm_helpers import DEFAULT_WAIT_SECONDS, key_name, model_names, retry_after_seconds, tool_use_failure
 from AI.usage_tracker import UsageTracker
 
-MAX_TRIES = 3  # for errors other than rate limits (timeouts, Groq server errors)
+MAX_TRIES = 3  # for errors other than rate limits and busy servers (timeouts, lost connections)
+BUSY_SECONDS = 30.0  # a model whose server answered 5xx is not tried again for this long
 MAX_TOTAL_WAIT_SECONDS = 90.0  # rate limits are normal on the free tier: wait up to this long in total
 REQUEST_TIMEOUT_SECONDS = 60.0
 PAUSE_STEP_SECONDS = 0.25
@@ -34,6 +40,7 @@ class ToolCall:
     id: str
     name: str
     arguments: str  # raw JSON text, parsed by the agent
+    extra_content: dict | None = None  # Gemini's thought signature, sent back with the call next round
 
 
 @dataclass
@@ -73,6 +80,7 @@ class LLMClient:
         self.reasoning_effort = reasoning_effort
         self.limited_until: dict[str, float] = {}  # model -> time its rate limit resets
         self.daily_limit_hit = False
+        self.busy_models: set[str] = set()  # resting after a server error (5xx), not a rate limit
         self.max_wait_seconds = max_wait_seconds  # small for the router: it falls back instead of waiting
         self.should_stop = None  # set per question: a function that returns True once the user pressed Stop
 
@@ -97,9 +105,11 @@ class LLMClient:
             pass  # a removed model or a network problem: the screen just shows the last known numbers
 
     def pick_model(self) -> tuple[str, float]:
-        """The model whose rate limit resets first, and how long to wait for it."""
+        """The first model that is free, else the one whose rate limit resets first, and how long to wait for it.
+        Gemini comes last: it is used when every Groq model is limited, so the app keeps answering."""
         now = time.monotonic()
-        model = min(self.models, key=lambda m: self.limited_until.get(m, 0))
+        candidates = self.models + [name for name in self.gemini_models if name not in self.models]
+        model = min(candidates, key=lambda m: max(0.0, self.limited_until.get(m, 0) - now))  # ties: first in order
         return model, max(0.0, self.limited_until.get(model, 0) - now)
 
     def complete(
@@ -113,7 +123,7 @@ class LLMClient:
                 raise AIUnavailableError("None of the models in .env (MODEL, FALLBACK_MODEL) exist on Groq.")
             model, wait = self.pick_model()
             if time.monotonic() + wait > deadline:
-                raise AIRateLimitedError(self.rate_limit_message(wait))
+                raise AIRateLimitedError(self.wait_message(wait, model))
             self.pause(wait)
             attempt += 1
             try:
@@ -122,9 +132,11 @@ class LLMClient:
                 self.limited_until[model] = time.monotonic() + retry_after_seconds(error)
                 self.usage.record_limit(model, str(error), retry_after_seconds(error))
                 self.daily_limit_hit = "per day" in str(error) or "PerDay" in str(error)
+                self.busy_models.discard(model)
                 attempt -= 1  # a rate limit is not a failure; the deadline above limits the waiting
             except groq.NotFoundError:
-                self.models.remove(model)  # the model was removed from Groq; keep going with the other one
+                self.models = [name for name in self.models if name != model]  # removed by the provider: skip it
+                self.gemini_models = [name for name in self.gemini_models if name != model]
             except groq.AuthenticationError as error:
                 raise AIUnavailableError(f"The {key_name(model)} in .env is not valid.") from error
             except groq.BadRequestError as error:
@@ -133,18 +145,23 @@ class LLMClient:
                 failed = tool_use_failure(error)
                 if failed is not None:
                     raise ToolCallFormatError(failed) from error
-                raise
+                raise AIUnavailableError(f"The model {model} refused the request: {str(error)[:200]}") from error
             except groq.APIStatusError as error:
-                if error.status_code == 413:
-                    raise RequestTooLargeError("The request is larger than Groq's free tier allows.") from error
-                if attempt == MAX_TRIES:
-                    raise AIUnavailableError("Groq is having problems right now. Try again soon.") from error
-                self.pause(DEFAULT_WAIT_SECONDS)
+                problem = status_problem(error.status_code, model)
+                if problem is not None:
+                    raise problem from error
+                self.limited_until[model] = time.monotonic() + BUSY_SECONDS  # busy: switch to another model
+                self.busy_models.add(model)
+                attempt -= 1  # like a rate limit: the deadline limits the waiting
             except (groq.APITimeoutError, groq.APIConnectionError) as error:
                 if attempt == MAX_TRIES:
-                    raise AIUnavailableError("Groq could not be reached. Check your internet connection.") from error
+                    raise AIUnavailableError(f"{provider_name(model)} is unreachable: check the internet.") from error
                 self.pause(DEFAULT_WAIT_SECONDS)
-        raise AIRateLimitedError("Groq's free rate limit is reached. Wait a minute and try again.")
+        raise AIRateLimitedError(self.wait_message(0.0, ""))
+
+    def wait_message(self, wait: float, model: str) -> str:
+        models = [*self.models, *self.gemini_models]
+        return rate_limit_message(self.daily_limit_hit, wait, models, busy=model in self.busy_models)
 
     def pause(self, seconds: float) -> None:
         """Wait in small steps, so Stop also ends a long rate-limit wait. Raises QuestionStopped."""
@@ -165,36 +182,19 @@ class LLMClient:
             raise ValueError("The model did not return a JSON object.")
         return data
 
-    def rate_limit_message(self, wait_seconds: float) -> str:
-        if self.daily_limit_hit:
-            minutes = max(1, round(wait_seconds / 60))
-            return f"Groq's free daily token limit is used up for all models. Try again in about {minutes} minutes."
-        return "Groq's free rate limit is reached. Wait a minute and try again."
-
     def _call(
         self, model: str, messages: list[dict], tools: list[dict], tool_choice: str | dict, json_mode: bool = False,
         max_tokens: int | None = None,
     ) -> LLMReply:  # fmt: skip
-        options: dict = {"tools": tools, "tool_choice": tool_choice} if tools else {}
-        if json_mode:
-            options["response_format"] = {"type": "json_object"}
+        options = request_options(model, tools, tool_choice, json_mode, max_tokens, self.reasoning_effort)
         client = self.gemini_client if model in self.gemini_models else self.client
-        if is_gemini(model) and isinstance(tool_choice, dict) and tools:
-            options["tool_choice"] = "required"  # Gemini wants "required" to force the one tool given
-        if model.startswith("openai/gpt-oss"):
-            options["reasoning_effort"] = self.reasoning_effort
-        elif model.startswith("qwen/"):
-            options["reasoning_format"] = "hidden"  # keep <think> text out of the answer
-        if max_tokens:
-            options["max_tokens"] = max_tokens
-        raw = client.chat.completions.with_raw_response.create(
-            model=model, messages=messages, temperature=0 if json_mode else 0.1, **options
-        )
+        messages = messages_for_model(messages, gemini=client is self.gemini_client)
+        raw = client.chat.completions.with_raw_response.create(model=model, messages=messages, **options)
         response = raw.parse()
         self.usage.record_reply(model, response.usage.total_tokens if response.usage else 0, raw.headers)
         message = response.choices[0].message
         tool_calls = [
-            ToolCall(id=call.id, name=call.function.name, arguments=call.function.arguments or "{}")
+            ToolCall(call.id, call.function.name, call.function.arguments or "{}", extra_content_of(call))
             for call in message.tool_calls or []
         ]
         return LLMReply(content=message.content or "", tool_calls=tool_calls, model=model)

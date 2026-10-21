@@ -3,6 +3,7 @@
 import difflib
 import re
 
+from AI.language.glossary import synonyms
 from AI.tools.tool_context import DocumentLike, TableLike, ToolContext, ToolError
 
 
@@ -65,11 +66,12 @@ def find_table(document: DocumentLike, table_id: str | None) -> TableLike:
 
 
 def find_column(table: TableLike, wanted: str) -> str | None:
-    """The real column name for a loose name ("amount" -> "Total Amount (SAR)"), or None."""
+    """The real column name for a loose name ("amount" -> "Total Amount (SAR)", "rate" -> "Unit Price"), or None."""
     columns = [str(column) for column in table.data.columns]
-    match = best_match(str(wanted), columns)
-    if match is not None:
-        return match
+    for name in [str(wanted), *synonyms(str(wanted))]:
+        match = best_match(name, columns)
+        if match is not None:
+            return match
     words = [word for word in re.split(r"\W+", str(wanted).lower()) if word]
     scored = [(sum(word in column.lower() for word in words), column) for column in columns]
     best_score, best_column = max(scored, default=(0, None))

@@ -59,6 +59,11 @@ def looks_like_greeting(text: str) -> bool:
     return " ".join(words) in NORMALIZED_GREETINGS or asks_for_my_name(words)
 
 
+def is_too_short(text: str) -> bool:
+    """A question mark, dots or one letter: no question to answer yet."""
+    return len("".join(words_of(text))) < 2
+
+
 def asks_for_my_name(words: list[str]) -> bool:
     """A short message about "your name": "what is ur name", "sho esmak enta", "ما اسمك" (not "contractor name")."""
     if not words or len(words) > NAME_QUESTION_MAX_WORDS:

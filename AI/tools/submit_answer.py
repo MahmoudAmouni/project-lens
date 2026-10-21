@@ -8,6 +8,9 @@ from AI.tools.tool_context import FinalAnswer, Source, ToolContext, ToolError, T
 
 # "1,450,000" or "1450000" become numbers so the table can sort and align them; item codes like "3.2" stay text.
 NUMBER_TEXT = re.compile(r"-?(\d{1,3}(,\d{3})+|\d{5,})(\.\d+)?")
+# The chat history marks earlier answers with "[Sources: ...]" and "[Table: ...]"; models copy them. The screen
+# shows sources and tables itself, so these tags are cut from the answer text.
+HISTORY_TAG = re.compile(r"\[\s*(sources?|table|المصادر|المصدر|الجدول)\s*:[^\]]*\]", re.IGNORECASE)
 
 
 def cell_value(value: object) -> object:
@@ -15,6 +18,10 @@ def cell_value(value: object) -> object:
     if isinstance(value, str) and NUMBER_TEXT.fullmatch(value.strip()):
         return to_plain(float(value.replace(",", "")))
     return value
+
+
+def without_history_tags(text: str) -> str:
+    return re.sub(r"\n{3,}", "\n\n", HISTORY_TAG.sub("", text)).strip()
 
 
 def without_markdown_tables(text: str) -> str:
@@ -65,8 +72,9 @@ def submit_answer(
 ) -> ToolResult:
     """Check and package the final answer. `table_result_id` ("t1" or "t1,t2") attaches query_table rows
     exactly as computed."""
-    if not str(answer or "").strip():
-        raise ToolError("'answer' cannot be empty.")
+    answer = without_history_tags(str(answer or ""))
+    if not answer:
+        raise ToolError("'answer' cannot be empty (and must not be only a [Sources: ...] tag).")
     table_ids = saved_table_ids(table_result_id)
     unknown = [table_id for table_id in table_ids if table_id not in context.saved_tables]
     if unknown:

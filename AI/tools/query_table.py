@@ -4,9 +4,11 @@ import re
 
 import pandas as pd
 
-from AI.tools.lookup import find_document, find_table, means_all_documents, require_column
+from AI.tools.lookup import require_column
 from AI.tools.saved_tables import save_table
-from AI.tools.table_filters import apply_filters, filter_columns
+from AI.tools.table_choice import other_matching_tables, tables_to_search
+from AI.tools.table_filters import apply_filters
+from AI.tools.table_ranking import keep_overall_best, rank_across_tables
 from AI.tools.tool_context import ToolContext, ToolError, ToolResult, to_plain
 
 DEFAULT_LIMIT = 50
@@ -15,12 +17,11 @@ ROWS_FOR_MODEL = 8  # per table; all rows go to the saved table (Groq free tier 
 ALL_DOCUMENTS = "*"
 NOT_AN_AMOUNT = re.compile(r"\b(rate|unit|qty|quantity|page|no\.?|number)\b|%", re.I)  # not money columns
 AMOUNT_NAME = re.compile(r"amount|total|cost|value|price|sum|المبلغ|القيمة|الإجمالي", re.I)
-SUMMARY_SHEET = re.compile(r"summary|recap|totals?\b|ملخص|الإجمالي", re.I)  # repeat other sheets' totals
 
 
 def row_source(document, table, row_number: int, row: pd.Series) -> str:
     """Citation for one row: "BOQ.xlsx · BOQ · row 47" or "BOQ.pdf · p. 3"."""
-    if document.file_type == "pdf" and "Page" in row.index:
+    if document.file_type in ("pdf", "word") and "Page" in row.index:
         return f"{document.name} · p. {to_plain(row['Page'])}"
     return f"{document.name} · {table.id} · row {row_number}"
 
@@ -73,51 +74,13 @@ def query_one_table(document, table, filters, columns, sort_by, descending, limi
         "sums": numeric_sums(table, matches),
         "rows": rows,
     }
+    if sort_by:
+        result["sort_column"] = str(sort_column)
     if len(matches) > limit:
         result["not_shown"] = f"{len(matches) - limit} more rows match; count and sums include them."
     if notes:
         result["notes"] = notes
     return result
-
-
-def tables_to_search(
-    context: ToolContext, document: str, table_id: str | None, filters: list[dict]
-) -> tuple[list, list[str]]:
-    """(document, table) pairs to query, and the summary sheets left out.
-
-    One table normally; with document "*", every table that has the filter columns, except summary
-    sheets, which repeat totals from other sheets and would count them twice.
-    """
-    if not means_all_documents(document):
-        found = find_document(context, document)
-        return [(found, find_table(found, table_id))], []
-    pairs, left_out = matching_tables(context, filters)
-    if not pairs:
-        raise ToolError("No table has all the filter columns. Use describe_table to check column names.")
-    return pairs, left_out
-
-
-def matching_tables(context: ToolContext, filters: list[dict]) -> tuple[list, list[str]]:
-    """Every (document, table) with the filter columns, and the summary sheets among them (left out)."""
-    pairs, left_out = [], []
-    for doc in context.documents:
-        for table in doc.tables if doc.status == "ok" else []:
-            if not filter_columns(table, filters):
-                continue
-            if SUMMARY_SHEET.search(table.id):
-                left_out.append(f"{doc.name} · {table.id}")
-            else:
-                pairs.append((doc, table))
-    return pairs, left_out
-
-
-def other_matching_tables(context: ToolContext, searched: list, filters: list[dict]) -> list[str]:
-    """Tables NOT searched that also have the filter columns, so the model does not miss other BOQs."""
-    if not filters:
-        return []
-    searched_ids = {(doc.name, table.id) for doc, table in searched}
-    pairs, _ = matching_tables(context, filters)
-    return [f"{doc.name} · {table.id}" for doc, table in pairs if (doc.name, table.id) not in searched_ids]
 
 
 def combined_sums(results: list[dict]) -> dict:
@@ -159,11 +122,13 @@ def query_table(
                 query_one_table(found, table, filters, columns, sort_by, descending, limit, include_total_rows)
             )
         except ToolError as error:
-            if not means_all_documents(document):
+            if len(pairs) == 1:
                 raise
             errors.append(error)
     if errors and not results:
         raise errors[0]  # e.g. a sort_by column no table has: say so, never a silent "0 rows"
+    if sort_by and len(results) > 1:  # "the most expensive item": the best rows of every table together
+        keep_overall_best(results, rank_across_tables(results, descending, limit))
     total = sum(result["match_count"] for result in results)
     data: dict = {"total_match_count": total, "tables": results}
     if len(results) > 1:
@@ -174,13 +139,15 @@ def query_table(
     if others:
         data["other_tables_with_these_columns"] = others
         data["note"] = (
-            f"Only one table was searched; {len(others)} other tables have these columns. If the question is "
-            "about all files, call query_table again WITHOUT document to search every table at once."
+            f"Only part of the files was searched; {len(others)} other tables have these columns. If the question "
+            "is about all files, call query_table again WITHOUT document to search every table at once."
         )
     saved_id = save_table(context, results, first_number_filter_column(filters) or "Amount")
     if saved_id:
         data["table_result_id"] = saved_id
         data["how_to_show_rows"] = f"Pass table_result_id='{saved_id}' to submit_answer; do not retype the rows."
+    if sort_by and len(results) > 1:
+        data["best_rows_of_all_tables"] = rank_across_tables(results, descending, ROWS_FOR_MODEL)
     for result in results:
         if len(result["rows"]) > ROWS_FOR_MODEL:
             result["rows_not_shown_here"] = len(result["rows"]) - ROWS_FOR_MODEL

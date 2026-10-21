@@ -7,6 +7,7 @@ import pdfplumber
 import pymupdf
 
 from Server.ingestion.models import Table
+from Server.ingestion.money_parser import currency_in_notes
 from Server.ingestion.table_cleaner import clean_table
 
 MIN_RULING_LINES = 6  # pages with fewer drawn lines almost never hold a ruled table
@@ -82,9 +83,9 @@ def merge_continued_tables(raw_tables: list[RawTable]) -> list[RawTable]:
     return merged
 
 
-def to_table(raw: RawTable, number_on_first_page: int) -> Table | None:
+def to_table(raw: RawTable, number_on_first_page: int, note_currency: str | None = None) -> Table | None:
     """Clean a raw table and add a "Page" column so every row can be cited."""
-    cleaned = clean_table(raw.rows)
+    cleaned = clean_table(raw.rows, note_currency=note_currency)
     if cleaned is None:
         return None
     data = cleaned.data
@@ -108,7 +109,8 @@ def read_pdf_tables(path: Path, pdf: pymupdf.Document) -> list[Table]:
         return []
     tables: list[Table] = []
     for raw in merge_continued_tables(extract_raw_tables(path, candidate_pages)):
-        table = to_table(raw, raw.position_on_page)
+        page_text = pdf[raw.pages[0] - 1].get_text("text")  # "All amounts in US Dollars" near the table
+        table = to_table(raw, raw.position_on_page, currency_in_notes([page_text]))
         if table is not None:
             tables.append(table)
     return tables

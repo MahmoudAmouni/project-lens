@@ -25,6 +25,20 @@ NOT_FOUND = {
     "arabizi": "Ma la2et hal ma3lume bel files yalli 7ammaltun.",
 }
 
+TABLE_ONLY = {  # the model's text had numbers no tool returned, so only the exact rows are shown
+    "en": "Here are the matching rows, exactly as they appear in the files:",
+    "ar": "هذه هي الصفوف المطابقة، كما وردت في الملفات تماماً:",
+    "ar-lb": "هيدي الصفوف يلي بتطابق، متل ما هيي بالملفات:",
+    "arabizi": "Hayde l rows yalli btetaba2, metel ma hiye bel files:",
+}
+
+CLARIFY = {  # "?", "." or one letter: nothing to answer yet
+    "en": "Could you write your question in a few words? For example:",
+    "ar": "هل يمكنك كتابة سؤالك ببضع كلمات؟ مثلاً:",
+    "ar-lb": "فيك تكتبلي سؤالك بكم كلمة؟ مثلاً:",
+    "arabizi": "Fik tektebli so2alak b kam kelme? Masalan:",
+}
+
 # (needs tables, question) per style: the cost question only when tables are loaded, the others need text.
 EXAMPLES = {
     "en": [(True, "List all cost items above SAR 1 million"), (False, "Summarize the scope of work"),
@@ -48,6 +62,29 @@ def example_questions(documents, style: str) -> list[str]:
 
 
 def fixed_reply(kind: str, style: str) -> str:
-    """The text for a greeting, out_of_scope or not_found reply."""
-    texts = {"greeting": GREETING, "out_of_scope": OUT_OF_SCOPE, "not_found": NOT_FOUND}[kind]
+    """The text for a greeting, out_of_scope, clarify, not_found or table_only reply."""
+    texts = {
+        "greeting": GREETING, "out_of_scope": OUT_OF_SCOPE, "clarify": CLARIFY, "not_found": NOT_FOUND,
+        "table_only": TABLE_ONLY,
+    }[kind]  # fmt: skip
     return texts.get(style, texts["en"])
+
+
+UNREADABLE_NOTE = {  # added under a "not found" answer: the answer may be in a file that could not be read
+    "en": "These files could not be read, so the answer may be in them:",
+    "ar": "تعذّرت قراءة هذه الملفات، لذا قد تكون الإجابة فيها:",
+    "ar-lb": "ما قدرت إقرا هالملفات، فممكن يكون الجواب فيهن:",
+    "arabizi": "Ma 2deret e2ra hal files, fa momken ykoun l jaweb fihon:",
+}
+MAX_UNREADABLE_LISTED = 5
+
+
+def unreadable_note(answer_text: str, documents, style: str) -> str:
+    """A line naming the unreadable files (scanned, corrupt, encrypted...), or "" when there are none
+    or the answer already names them all."""
+    unreadable = [document for document in documents if document.status != "ok"]
+    if not unreadable or all(document.name in answer_text for document in unreadable):
+        return ""
+    listed = ", ".join(f"{document.name} ({document.status})" for document in unreadable[:MAX_UNREADABLE_LISTED])
+    more = f" +{len(unreadable) - MAX_UNREADABLE_LISTED}" if len(unreadable) > MAX_UNREADABLE_LISTED else ""
+    return f"\n\n{UNREADABLE_NOTE.get(style, UNREADABLE_NOTE['en'])} {listed}{more}"

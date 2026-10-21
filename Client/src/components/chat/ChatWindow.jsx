@@ -9,7 +9,7 @@ import ErrorMessage from "./ErrorMessage";
 import ThinkingIndicator from "./ThinkingIndicator";
 import UserMessage from "./UserMessage";
 
-const FIXED_REPLY_KINDS = ["out_of_scope", "greeting"];
+const FIXED_REPLY_KINDS = ["out_of_scope", "greeting", "clarify"];
 
 export default function ChatWindow({ chat, documents, onAskAgain, onOpenMenu }) {
   const end = useRef(null);

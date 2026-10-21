@@ -73,7 +73,7 @@ python -m Server.cli ./sample_docs
 | `GROQ_API_KEY` | (none) | Your Groq key. Only in `.env`, never in code or commits |
 | `MODEL` | `openai/gpt-oss-120b` | Main model |
 | `FALLBACK_MODEL` | `openai/gpt-oss-20b,qwen/qwen3.8-27b` | Backup models, used in turn when the main one hits a rate limit. `MODEL` and these are the choices in the app's model picker |
-| `GEMINI_API_KEY` | (none) | Optional Google Gemini key. Adds Gemini as one more choice in the model picker (never an automatic backup). Only in `.env` |
+| `GEMINI_API_KEY` | (none) | Optional Google Gemini key. Adds Gemini as one more choice in the model picker, and the last backup when every Groq model is rate limited. Only in `.env` |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | The Gemini model(s) offered in the picker |
 | `GEMINI_DAILY_REQUESTS` | `250` | Gemini's free daily request limit, for the "requests left" number; corrected by Google's limit errors |
 | `USAGE_FILE` | `./.usage/token_usage.json` | Tokens used per model today, for the "tokens left" numbers in the model picker |
@@ -141,7 +141,7 @@ scripts/  setup, start, evaluate (accuracy check against real questions)
 | Case | What happens |
 | --- | --- |
 | Folder missing / no PDF or Excel inside | Clear error (`FOLDER_NOT_FOUND`, `FOLDER_EMPTY`) |
-| Unsupported files (.docx, .png) | Listed as skipped, not an error |
+| Unsupported files (.doc, .png) | Listed as skipped, not an error |
 | Corrupt, password-protected, scanned or empty file | Marked with a status badge and a reason; the AI is told it cannot be read |
 | File over `MAX_FILE_MB` | Marked "too large" and skipped |
 | 600-page PDF, 100,000-row Excel | Loads in about 15 seconds; tools return pages and rows in small pieces; filters still check every row |
@@ -165,7 +165,7 @@ The evaluation writes `docs/accuracy_report.md`. It uses most of one day's free 
 
 The free tier allows about **8,000 tokens per minute and 200,000 tokens per day per model**, shared by every key of the same Groq account. One question uses roughly 5,000–20,000 tokens, so answers can take 10–60 seconds while the client waits for the per-minute limit (the UI says so), and a day allows a few dozen questions per model.
 
-The model picker shows, per model, the requests left today and the tokens left this minute (both from Groq) and about how many tokens are left today (counted by the app, and corrected from Groq's own numbers when it reports a limit). When one model runs out, pick another: each has its own daily limit. With a free Google key in `GEMINI_API_KEY`, Gemini 2.5 Flash is one more choice with a separate limit. A paid Groq key removes the waiting; no code change is needed.
+The model picker shows, per model, the requests left today and the tokens left this minute (both from Groq) and about how many tokens are left today (counted by the app, and corrected from Groq's own numbers when it reports a limit). When one model runs out, pick another: each has its own daily limit. With a free Google key in `GEMINI_API_KEY`, Gemini 2.5 Flash is one more choice with a separate limit, and it answers automatically while every Groq model is rate limited. A paid Groq key removes the waiting; no code change is needed.
 
 ## Limitations and future work
 

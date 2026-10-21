@@ -94,7 +94,7 @@ def test_daily_limit_gives_a_clear_message():
         body=None,
     )
     client = ScriptedClient([error, error])
-    with pytest.raises(AIRateLimitedError, match="daily token limit"):
+    with pytest.raises(AIRateLimitedError, match="daily limit of Groq is used up.*about 10 minutes"):
         client.complete([], [])
 
 

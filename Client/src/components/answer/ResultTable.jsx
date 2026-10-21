@@ -1,5 +1,5 @@
 // Table of result rows (e.g. BOQ items): sticky header, sortable columns, money formatted and end-aligned,
-// a total row for money columns, "Show all", Export CSV and Copy.
+// a total row for money columns (only when every row comes from one file), "Show all", Export CSV and Copy.
 
 import { ArrowDown, ArrowUp, Check, Copy, Download } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -9,6 +9,7 @@ import {
   formatCell,
   isNumberColumn,
   isSummableColumn,
+  rowsFromOneFile,
   sumColumn,
   tableToCsv,
   tableToTsv,
@@ -51,7 +52,8 @@ export default function ResultTable({ table }) {
 
   const numeric = useMemo(() => columns.map((_, index) => isNumberColumn(rows, index)), [columns, rows]);
   const summable = useMemo(
-    () => columns.map((column, index) => isSummableColumn(column, rows, index)),
+    () =>
+      columns.map((column, index) => rowsFromOneFile(columns, rows) && isSummableColumn(column, rows, index)),
     [columns, rows],
   );
   const sorted = useMemo(() => {

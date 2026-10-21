@@ -14,7 +14,7 @@ STATUS_TOO_LARGE = "too_large"
 
 @dataclass
 class Page:
-    """One PDF page. `number` is 1-based, like in a PDF viewer."""
+    """One PDF or Word page. `number` is 1-based, like in a PDF viewer."""
 
     number: int
     text: str
@@ -22,7 +22,7 @@ class Page:
 
 @dataclass
 class Table:
-    """A cleaned table: an Excel sheet or a table found in a PDF."""
+    """A cleaned table: an Excel sheet or a table found in a PDF or Word file."""
 
     id: str  # "BOQ" for an Excel sheet, "page_5_table_1" for a PDF table
     data: pd.DataFrame  # real header row, numbers as numbers; index = row number in the file
@@ -37,7 +37,7 @@ class Document:
 
     name: str
     path: str
-    file_type: str  # "pdf" or "excel"
+    file_type: str  # "pdf", "excel" or "word"
     status: str = STATUS_OK
     message: str = ""  # human explanation when status is not ok
     pages: list[Page] = field(default_factory=list)  # empty for Excel
@@ -57,7 +57,7 @@ class Document:
 
 @dataclass
 class SkippedFile:
-    """A file in the folder that is not a PDF or Excel file."""
+    """A file in the folder that is not a PDF, Excel or Word file."""
 
     name: str
     reason: str
