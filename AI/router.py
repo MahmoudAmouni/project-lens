@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 from AI.errors import QuestionStopped
 from AI.guards.injection_check import looks_like_injection
+from AI.language.follow_up_words import looks_like_follow_up
 from AI.language.style_detect import detect_style, is_too_short, looks_like_greeting
 from AI.prompts import ROUTER_PROMPT
 
@@ -39,15 +40,17 @@ class Route:
         return self.intent in ("document_question", "follow_up")
 
 
-def fallback_route(question: str, ui_language: str | None) -> Route:
+def fallback_route(question: str, ui_language: str | None, history: list[dict] | None = None) -> Route:
     """No AI: the style from the letters used; an injection, a plain greeting, too short to answer ("?"),
-    or else a document question."""
+    a follow-up on the last answer ("write that in Arabic", only with chat history), or else a document question."""
     if looks_like_injection(question):
         intent = "injection"
     elif looks_like_greeting(question):
         intent = "greeting"
     elif is_too_short(question):
         intent = "clarify"
+    elif history and looks_like_follow_up(question):
+        intent = "follow_up"
     else:
         intent = "document_question"
     return Route(style=detect_style(question, ui_language), intent=intent)
@@ -101,7 +104,7 @@ class Router:
     def route(
         self, question: str, history: list[dict] | None = None, ui_language: str | None = None, overview: str = ""
     ) -> Route:
-        fallback = fallback_route(question, ui_language)
+        fallback = fallback_route(question, ui_language, history)
         if self.llm is None or fallback.intent in PLAIN_INTENTS:
             return fallback  # certain without AI: instant, and no tokens used
         messages = [

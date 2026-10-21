@@ -105,7 +105,9 @@ class Agent:
             return self.fixed_answer("out_of_scope", route.style, "Not about the documents: answered without searching")
         # A follow-up about the last answer may reuse that answer's sources (see the answer check).
         self.consulted = sources_from_history(history) if route.intent == "follow_up" else []
-        self.tool_texts = [question, str(history or "")]  # grows with every tool result
+        # Grows with every tool result. Numbers from earlier answers count only for a follow-up on them:
+        # a new question must get its numbers from the tools again (an old answer may have been wrong).
+        self.tool_texts = [question, str(history or "")] if route.intent == "follow_up" else [question]
         self.context.known_texts = self.tool_texts  # the same list: calculate may use only these numbers
         self.context.saved_tables.clear()  # an answer may only attach rows saved for this question (t1, t2...)
         answer = self.answer_from_documents(question_with_notes(question, route), history)
