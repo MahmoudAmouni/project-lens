@@ -41,7 +41,7 @@ def load_settings() -> Settings:
         groq_api_key=os.getenv("GROQ_API_KEY", "").strip(),
         model=os.getenv("MODEL", "openai/gpt-oss-120b").strip(),
         fallback_model=os.getenv("FALLBACK_MODEL", "openai/gpt-oss-20b,qwen/qwen3.8-27b").strip(),
-        router_model=os.getenv("ROUTER_MODEL", "openai/gpt-oss-20b,qwen/qwen3.8-27b,allam-2-7b").strip(),
+        router_model=os.getenv("ROUTER_MODEL", "openai/gpt-oss-20b,qwen/qwen3.8-27b").strip(),
         gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
         gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash,gemini-3.5-flash-lite").strip(),
         gemini_daily_requests=int(os.getenv("GEMINI_DAILY_REQUESTS", "250")),
