@@ -25,6 +25,7 @@ class TableLike(Protocol):
     location: str
     currencies: dict[str, str]
     summary_rows: list[int]
+    notes: list[str]  # title lines above the header (may be empty)
 
 
 class DocumentLike(Protocol):
