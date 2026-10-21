@@ -14,7 +14,8 @@ from AI.tools.tool_context import ToolContext, ToolError, ToolResult, to_plain
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 200
-ROWS_FOR_MODEL = 8  # per table; all rows go to the saved table (Groq free tier limits)
+ROWS_FOR_MODEL = 8  # per table for Groq (small free tier); big-limit models see more (context.rows_for_model)
+BIG_ROWS_FOR_MODEL = 60  # Gemini / OpenRouter: the model sees the rows instead of guessing the hidden ones
 ALL_DOCUMENTS = "*"
 NOT_AN_AMOUNT = re.compile(r"\b(rate|unit|qty|quantity|page|no\.?|number)\b|%", re.I)  # not money columns
 AMOUNT_NAME = re.compile(r"amount|total|cost|value|price|sum|المبلغ|القيمة|الإجمالي", re.I)
@@ -157,10 +158,10 @@ def query_table(
         data["table_result_id"] = saved_id
         data["how_to_show_rows"] = f"Pass table_result_id='{saved_id}' to submit_answer; do not retype the rows."
     if sort_by and len(results) > 1:
-        data["best_rows_of_all_tables"] = rank_across_tables(results, descending, ROWS_FOR_MODEL)
+        data["best_rows_of_all_tables"] = rank_across_tables(results, descending, context.rows_for_model)
     for result in results:
-        if len(result["rows"]) > ROWS_FOR_MODEL:
-            result["rows_not_shown_here"] = len(result["rows"]) - ROWS_FOR_MODEL
-            result["rows"] = result["rows"][:ROWS_FOR_MODEL]
+        if len(result["rows"]) > context.rows_for_model:
+            result["rows_not_shown_here"] = len(result["rows"]) - context.rows_for_model
+            result["rows"] = result["rows"][: context.rows_for_model]
     names = ", ".join(f"{r['document']} · {r['table_id']}" for r in results)
     return ToolResult(data=data, step=f"Filtered {names}: {total} rows")
