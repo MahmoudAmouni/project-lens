@@ -5,7 +5,8 @@ from AI.tools.tool_context import ToolContext
 
 MAX_SAVED_TABLES = 20
 SAME_MEANING = {"itemno": "Item", "itemnumber": "Item", "item": "Item", "qty": "Qty", "quantity": "Qty"}
-HIDDEN_KEYS = {"row", "source", "Page", "Source page"}  # the Source column already has file + row/page
+HIDDEN_KEYS = {"row", "source", "Page", "Source page", "is_total"}  # the Source column already has file + row/page
+TOTAL_MARK = "__is_total"  # kept on a merged row (never a column) until the saved table lists its total rows
 
 
 def merged_number_label(results: list[dict], wanted: str | None) -> str | None:
@@ -34,6 +35,8 @@ def merged_rows(results: list[dict], number_label: str | None) -> tuple[list[str
                 if name not in columns:
                     columns.append(name)
             merged["Source"] = row["source"]
+            if row.get("is_total"):
+                merged[TOTAL_MARK] = True
             rows.append(merged)
     return [*columns, "Source"], rows
 
@@ -48,12 +51,15 @@ def combine_saved_tables(context: ToolContext, table_ids: list[str]) -> dict:
     """One table from several saved results (columns are merged by name)."""
     columns: list[str] = []
     rows: list[dict] = []
+    total_rows: list[int] = []  # subtotal / grand total lines: the screen shows them but leaves them out of its total
     for table_id in table_ids:
         saved = context.saved_tables[table_id]
+        total_rows += [len(rows) + index for index in saved.get("total_rows", [])]
         rows += [dict(zip(saved["columns"], row, strict=True)) for row in saved["rows"]]
         columns += [c for c in saved["columns"] if c not in columns]
     columns = [c for c in columns if c != "Source"] + ["Source"]
-    return {"columns": columns, "rows": [[row.get(c) for c in columns] for row in rows]}
+    table = {"columns": columns, "rows": [[row.get(c) for c in columns] for row in rows]}
+    return {**table, "total_rows": total_rows} if total_rows else table
 
 
 def save_table(context: ToolContext, results: list[dict], wanted_number_column: str | None) -> str | None:
@@ -62,7 +68,11 @@ def save_table(context: ToolContext, results: list[dict], wanted_number_column: 
     if not rows:
         return None
     table_id = f"t{len(context.saved_tables) + 1}"
-    context.saved_tables[table_id] = {"columns": columns, "rows": [[row.get(c) for c in columns] for row in rows]}
+    context.saved_tables[table_id] = {
+        "columns": columns,
+        "rows": [[row.get(c) for c in columns] for row in rows],
+        "total_rows": [index for index, row in enumerate(rows) if row.get(TOTAL_MARK)],
+    }
     for old_id in list(context.saved_tables)[:-MAX_SAVED_TABLES]:
         del context.saved_tables[old_id]
     return table_id
