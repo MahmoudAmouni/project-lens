@@ -44,7 +44,7 @@ def load_settings() -> Settings:
         router_model=os.getenv("ROUTER_MODEL", "openai/gpt-oss-20b,qwen/qwen3.8-27b").strip(),
         gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
         gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash,gemini-3.5-flash-lite").strip(),
-        gemini_daily_requests=int(os.getenv("GEMINI_DAILY_REQUESTS", "250")),
+        gemini_daily_requests=int(os.getenv("GEMINI_DAILY_REQUESTS", "20")),
         openrouter_api_key=os.getenv("OPENROUTER_API_KEY", "").strip(),
         openrouter_model=os.getenv("OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODELS).strip(),
         scope_mode=os.getenv("SCOPE_MODE", "strict").strip().lower(),
