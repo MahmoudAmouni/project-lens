@@ -83,7 +83,7 @@
     "subtitle": "Answers come only from your files, with the file and page for every fact."
   },
   "suggestions": {
-    "cost": "List all cost items above SAR 1 million",
+    "cost": "List all cost items above 1 million",
     "scope": "Summarize the scope of work",
     "dates": "Extract all dates and deliverables",
     "totals": "What is the total of each BOQ?"
