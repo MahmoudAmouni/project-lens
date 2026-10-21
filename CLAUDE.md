@@ -1,5 +1,5 @@
 # ProjectLens — rules for Claude Code
-- Read docs/PLAN.md before any task. Follow its folder structure and names.
+- Follow the existing folder structure and names (Client, Server, AI, tests, scripts).
 - Install and download EVERYTHING yourself (Python, Node, pip and npm packages, the embedding model). Never ask Mahmoud to install anything.
 - LLM = Groq via the `groq` SDK; model names come from .env. Never write the API key in code, docs, logs or commits.
 - Client = React + Vite + Tailwind (JS). Server = FastAPI. AI = agent, tools, RAG.
