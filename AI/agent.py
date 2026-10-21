@@ -23,7 +23,9 @@ from AI.question_notes import question_with_notes
 from AI.router import Router
 from AI.tool_runner import run_tool_call
 from AI.tools.list_documents import document_overview
+from AI.tools.query_table import BIG_ROWS_FOR_MODEL, ROWS_FOR_MODEL
 from AI.tools.registry import SUBMIT_ONLY_SCHEMAS, TOOL_SCHEMAS
+from AI.tools.saved_tables import combine_saved_tables
 from AI.tools.tool_context import DocumentLike, FinalAnswer, ToolContext
 
 MAX_TOOL_ROUNDS = 10
@@ -115,6 +117,8 @@ class Agent:
         answer = check_answer(answer, self.consulted, fixed_reply("not_found", route.style))
         if answer.kind == "answer" and not answer.table and opens_with_not_found(answer.answer, question):
             answer.kind, answer.sources = "not_found", []  # nothing was found: a searched file is not a source
+        if answer.kind == "answer" and not answer.table and self.context.saved_tables:  # the rows behind the answer
+            answer.table = combine_saved_tables(self.context, list(self.context.saved_tables)[-1:])
         if answer.kind == "not_found" or says_not_found(answer.answer):  # it may be in an unreadable file: say which
             answer.answer += unreadable_note(answer.answer, self.context.documents, route.style)
         return answer.with_style(route.style)
@@ -135,6 +139,7 @@ class Agent:
         for _ in range(MAX_TOOL_ROUNDS):
             self.check_stop()
             budget = request_budget(self.llm)
+            self.context.rows_for_model = ROWS_FOR_MODEL if budget == REQUEST_TOKEN_BUDGET else BIG_ROWS_FOR_MODEL
             if budget == REQUEST_TOKEN_BUDGET:  # Groq's small free tier: cut results the model already read
                 shorten_old_results(messages)
             fit_to_budget(messages, TOOL_SCHEMAS, budget)
