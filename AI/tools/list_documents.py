@@ -27,12 +27,13 @@ def describe_tables(document) -> list[dict]:
             "rows": len(table.data),
             "columns": [str(column) for column in table.data.columns],
             "currencies": table.currencies or currency_text(table),
+            "title_lines": getattr(table, "notes", None) or [],
         }
         for table in document.tables
     ]
 
 
-MAX_OVERVIEW_CHARS = 2_500
+MAX_OVERVIEW_CHARS = 3_000
 
 
 def document_overview(documents) -> str:
@@ -46,7 +47,9 @@ def document_overview(documents) -> str:
         for table in document.tables:
             columns = ", ".join(str(column) for column in table.data.columns)
             currency = currency_text(table)
-            parts.append(f"table '{table.id}' ({len(table.data)} rows: {columns}{'; ' + currency if currency else ''})")
+            title = f" [{table.notes[-1]}]" if getattr(table, "notes", None) else ""  # the last line: its revision
+            money = f"; {currency}" if currency else ""
+            parts.append(f"table '{table.id}'{title} ({len(table.data)} rows: {columns}{money})")
         lines.append(f"- {document.name}: " + "; ".join(parts))
     overview = "\n".join(lines)
     if len(overview) > MAX_OVERVIEW_CHARS:
