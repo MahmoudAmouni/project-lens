@@ -119,7 +119,7 @@ def test_query_table_bad_input_gives_helpful_error(context, arguments, message):
 def test_describe_table_finds_loose_names(context):
     result = describe_table(context, "boq phase2", "boq phase 2")
     assert result.data["table_id"] == "BOQ Phase 2"
-    assert result.data["columns"][-1] == {
+    assert next(c for c in result.data["columns"] if c["name"] == "Amount") == {
         "name": "Amount", "type": "number", "filled": 8, "min": 630000, "max": 2400000, "currency": "SAR",
     }  # fmt: skip
 

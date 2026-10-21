@@ -37,12 +37,18 @@ export function isSummableColumn(column, rows, index) {
   return isNumberColumn(rows, index) && AMOUNT_NAME.test(column) && !NOT_AN_AMOUNT.test(column);
 }
 
-/** True when every row comes from the same file ("BOQ.xlsx · BOQ · row 4" -> "BOQ.xlsx"), or there is no Source
- * column. Rows from different files are never added into one total: they may be different things or currencies. */
+/** "BOQ.xlsx · Civil BOQ · row 4" -> "BOQ.xlsx · Civil BOQ" (file and sheet); "Spec.pdf · p. 3" -> "Spec.pdf". */
+function tableOf(source) {
+  const parts = String(source ?? "").split(" · ");
+  return parts.length >= 3 ? parts.slice(0, 2).join(" · ") : parts[0];
+}
+
+/** True when every row comes from the same table (file + sheet), or there is no Source column. Rows from
+ * different files or sheets are never added into one total: a Summary sheet repeats the BOQ sheet's amounts. */
 export function rowsFromOneFile(columns, rows) {
   const source = columns.indexOf("Source");
   if (source < 0) return true;
-  return new Set(rows.map((row) => String(row[source] ?? "").split(" · ")[0])).size <= 1;
+  return new Set(rows.map((row) => tableOf(row[source]))).size <= 1;
 }
 
 export function sumColumn(rows, index) {

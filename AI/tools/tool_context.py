@@ -50,6 +50,7 @@ class ToolContext:
     vector_store: Any = None  # AI.rag.vector_store.VectorStore, or None when RAG is off
     saved_tables: dict[str, dict] = field(default_factory=dict)  # query_table rows, by table_result_id
     known_texts: list[str] = field(default_factory=list)  # question, history, tool results (for calculate)
+    rows_for_model: int = 8  # query_table rows shown per table: few for Groq, more for big-limit models
 
 
 @dataclass
