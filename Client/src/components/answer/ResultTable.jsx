@@ -1,5 +1,6 @@
 // Table of result rows (e.g. BOQ items): sticky header, sortable columns, money formatted and end-aligned,
 // a total row for money columns (only when every row comes from one file), "Show all", Export CSV and Copy.
+// Subtotal / grand total lines from the file (table.total_rows) are shown in bold but never added into that total.
 
 import { ArrowDown, ArrowUp, Check, Copy, Download } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -42,6 +43,11 @@ export default function ResultTable({ table }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage;
   const { columns, rows } = useMemo(() => withoutEmptyColumns(table), [table]);
+  const totalLines = useMemo(
+    () => new Set((table.total_rows ?? []).map((index) => rows[index])),
+    [table, rows],
+  );
+  const itemRows = useMemo(() => rows.filter((row) => !totalLines.has(row)), [rows, totalLines]);
   const longText = useMemo(
     () => columns.map((_, index) => rows.some((row) => String(row[index] ?? "").length > LONG_TEXT_CHARS)),
     [columns, rows],
@@ -102,7 +108,10 @@ export default function ResultTable({ table }) {
           </thead>
           <tbody>
             {shown.map((row, rowIndex) => (
-              <tr key={rowIndex} className="border-b border-line last:border-0 even:bg-row-alt hover:bg-page">
+              <tr
+                key={rowIndex}
+                className={`border-b border-line last:border-0 even:bg-row-alt hover:bg-page ${totalLines.has(row) ? "font-semibold" : ""}`}
+              >
                 {row.map((value, index) => (
                   <td
                     key={index}
@@ -126,9 +135,9 @@ export default function ResultTable({ table }) {
                     className={`whitespace-nowrap border-t border-line px-3 py-2 ${numeric[index] ? "text-end" : ""}`}
                   >
                     {index === 0
-                      ? t("table.total", { count: rows.length })
+                      ? t("table.total", { count: itemRows.length })
                       : summable[index]
-                        ? formatCell(sumColumn(rows, index), column, language)
+                        ? formatCell(sumColumn(itemRows, index), column, language)
                         : ""}
                   </td>
                 ))}

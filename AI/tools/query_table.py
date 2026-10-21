@@ -66,6 +66,8 @@ def query_one_table(document, table, filters, columns, sort_by, descending, limi
     for row_number, row in matches.head(limit).iterrows():
         values = {str(c): to_plain(row[c]) for c in shown_columns}
         rows.append({"row": int(row_number), **values, "source": row_source(document, table, row_number, row)})
+        if row_number in table.summary_rows:
+            rows[-1]["is_total"] = True  # a subtotal or grand total line: shown, but never added up again
     result = {
         "document": document.name,
         "table_id": table.id,
