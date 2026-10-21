@@ -11,6 +11,7 @@ NUMBER_TEXT = re.compile(r"-?(\d{1,3}(,\d{3})+|\d{5,})(\.\d+)?")
 # The chat history marks earlier answers with "[Sources: ...]" and "[Table: ...]"; models copy them. The screen
 # shows sources and tables itself, so these tags are cut from the answer text.
 HISTORY_TAG = re.compile(r"\[\s*(sources?|table|المصادر|المصدر|الجدول)\s*:[^\]]*\]", re.IGNORECASE)
+CITATION_MARK = re.compile(r"[ \t]*【[^】]{0,40}】")  # gpt-oss writes "【source1】" or "【4†L1-L3】" after facts
 
 
 def cell_value(value: object) -> object:
@@ -21,7 +22,9 @@ def cell_value(value: object) -> object:
 
 
 def without_history_tags(text: str) -> str:
-    return re.sub(r"\n{3,}", "\n\n", HISTORY_TAG.sub("", text)).strip()
+    """No "[Sources: ...]" tags and no model citation marks ("【source1】"): sources show as chips under the answer."""
+    text = CITATION_MARK.sub("", HISTORY_TAG.sub("", text))
+    return re.sub(r"\n{3,}", "\n\n", re.sub(r"[ \t]+([.,;:])", r"\1", text)).strip()
 
 
 def without_markdown_tables(text: str) -> str:

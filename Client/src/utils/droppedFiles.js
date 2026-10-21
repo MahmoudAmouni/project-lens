@@ -35,9 +35,7 @@ async function filesFromEntry(entry) {
 
 /** Files from a drop: plain files and whole folders. */
 export async function filesFromDrop(dataTransfer) {
-  const entries = [...(dataTransfer.items ?? [])]
-    .map((item) => item.webkitGetAsEntry?.())
-    .filter(Boolean);
+  const entries = [...(dataTransfer.items ?? [])].map((item) => item.webkitGetAsEntry?.()).filter(Boolean);
   if (!entries.length) return filesFromList(dataTransfer.files);
   const nested = await Promise.all(entries.map(filesFromEntry));
   return nested.flat();
@@ -47,7 +45,6 @@ export async function filesFromDrop(dataTransfer) {
 export function filesFromList(fileList) {
   return [...(fileList ?? [])].filter(
     (file) =>
-      isWanted(file.name) &&
-      !(file.webkitRelativePath ?? "").split("/").some((part) => part.startsWith(".")),
+      isWanted(file.name) && !(file.webkitRelativePath ?? "").split("/").some((part) => part.startsWith(".")),
   );
 }

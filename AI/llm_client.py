@@ -1,10 +1,7 @@
-"""The one place that talks to the AI models: Groq, plus Google Gemini and OpenRouter when their keys are set.
+"""The one place that talks to the AI models: Groq first, then Gemini and OpenRouter when their keys are set.
 
-Groq's free tier allows about 8,000 tokens per minute per model. On a rate limit we switch to the
-other model (it has its own limit); when both are limited we wait as long as Groq asks, then retry.
-The user may pick which model goes first; every reply's token use is counted (see usage_tracker.py).
-Gemini and OpenRouter are used when the user picks them, and as the last resort while every Groq model is limited.
-A busy model (server error 5xx, e.g. Gemini 503 "overloaded") is rested for a while, like a rate limit.
+On a rate limit, a busy server (5xx) or a backup refusing a request, that model rests and the next one answers;
+when all are resting we wait (up to a limit) for the first to be free. Token use is counted in usage_tracker.py.
 """
 
 import json
@@ -12,7 +9,7 @@ import time
 
 import groq
 
-from AI.errors import AIRateLimitedError, AIUnavailableError, QuestionStopped, ToolCallFormatError
+from AI.errors import AIRateLimitedError, AIUnavailableError, ToolCallFormatError
 from AI.gemini_client import extra_content_of, make_gemini_client, messages_for_model
 from AI.llm_helpers import (
     DEFAULT_WAIT_SECONDS,
@@ -24,6 +21,7 @@ from AI.llm_helpers import (
     request_options,
     retry_after_seconds,
     status_problem,
+    stoppable_pause,
     tool_use_failure,
 )
 from AI.llm_reply import LLMReply, ToolCall
@@ -34,7 +32,6 @@ MAX_TRIES = 3  # for errors other than rate limits and busy servers (timeouts, l
 BUSY_SECONDS = 30.0  # a model whose server answered 5xx is not tried again for this long
 MAX_TOTAL_WAIT_SECONDS = 90.0  # rate limits are normal on the free tier: wait up to this long in total
 REQUEST_TIMEOUT_SECONDS = 60.0
-PAUSE_STEP_SECONDS = 0.25
 
 
 class LLMClient:
@@ -118,7 +115,7 @@ class LLMClient:
         deadline = time.monotonic() + self.max_wait_seconds
         attempt = 0
         while attempt < MAX_TRIES:
-            if not self.models:
+            if not self.models and not self.backup_models:
                 raise AIUnavailableError("None of the models in .env (MODEL, FALLBACK_MODEL) exist on Groq.")
             model, wait = self.pick_model()
             if time.monotonic() + wait > deadline:
@@ -145,6 +142,9 @@ class LLMClient:
                 failed = tool_use_failure(error)
                 if failed is not None:
                     raise ToolCallFormatError(failed) from error
+                if model in self.backup_models:  # one backup refusing (e.g. an unsupported option) must not end it
+                    self.limited_until[model] = time.monotonic() + BUSY_SECONDS
+                    continue
                 raise AIUnavailableError(f"The model {model} refused the request: {str(error)[:200]}") from error
             except groq.APIStatusError as error:
                 problem = status_problem(error.status_code, model)
@@ -164,15 +164,7 @@ class LLMClient:
         return rate_limit_message(self.daily_limit_hit, wait, models, busy=model in self.busy_models)
 
     def pause(self, seconds: float) -> None:
-        """Wait in small steps, so Stop also ends a long rate-limit wait. Raises QuestionStopped."""
-        end = time.monotonic() + seconds
-        while True:
-            if self.should_stop and self.should_stop():
-                raise QuestionStopped("Stopped by the user.")
-            left = end - time.monotonic()
-            if left <= 0:
-                return
-            time.sleep(min(PAUSE_STEP_SECONDS, left))
+        stoppable_pause(seconds, self.should_stop)  # Stop also ends a long rate-limit wait
 
     def client_for(self, model: str) -> groq.Groq:
         if model in self.gemini_models:

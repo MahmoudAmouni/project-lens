@@ -1,14 +1,16 @@
 """Small helpers for llm_client.py: model lists from .env, which key a model uses, and reading API errors."""
 
 import re
+import time
 
 import groq
 
-from AI.errors import AIUnavailableError, RequestTooLargeError
+from AI.errors import AIUnavailableError, QuestionStopped, RequestTooLargeError
 from AI.gemini_client import is_gemini
 from AI.openrouter_client import is_openrouter
 
 DEFAULT_WAIT_SECONDS = 5.0
+PAUSE_STEP_SECONDS = 0.25
 RETRY_IN_PATTERN = re.compile(r"retry in ((?:[\d.]+[hms])+)", re.IGNORECASE)  # "23.5s" or "23h1m31.0s"
 DURATION_PART = re.compile(r"([\d.]+)([hms])")
 DAILY_WAIT_SECONDS = 3600  # a limit that lasts over an hour is a daily quota, not a per-minute one
@@ -115,3 +117,15 @@ def tool_use_failure(error: groq.BadRequestError) -> str | None:
     reason = str(details.get("message") or "invalid tool call")
     generated = str(details.get("failed_generation") or "")[:600]
     return f"{reason} You wrote: {generated}" if generated else reason
+
+
+def stoppable_pause(seconds: float, should_stop=None) -> None:
+    """Wait in small steps, so the user's Stop also ends a long rate-limit wait. Raises QuestionStopped."""
+    end = time.monotonic() + seconds
+    while True:
+        if should_stop and should_stop():
+            raise QuestionStopped("Stopped by the user.")
+        left = end - time.monotonic()
+        if left <= 0:
+            return
+        time.sleep(min(PAUSE_STEP_SECONDS, left))
