@@ -129,4 +129,4 @@ A paid key removes the waiting. No code change needed.
 | `tests/` | pytest suite + sample file maker |
 | `scripts/` | setup, start, evaluate |
 
-[Design note](docs/NOTE.md) · [Build plan](docs/PLAN.md) · [Setup](SETUP.md)
+[Setup](SETUP.md)
