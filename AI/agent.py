@@ -4,7 +4,7 @@ import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, shorten_old_results
+from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, request_budget, shorten_old_results
 from AI.errors import QuestionStopped, RequestTooLargeError, ToolCallFormatError
 from AI.guards.answer_check import check_answer, sources_from_history, sources_from_tool
 from AI.guards.number_check import keep_tool_numbers
@@ -132,8 +132,10 @@ class Agent:
         self.search_reminder_sent = False
         for _ in range(MAX_TOOL_ROUNDS):
             self.check_stop()
-            shorten_old_results(messages)
-            fit_to_budget(messages, TOOL_SCHEMAS)
+            budget = request_budget(self.llm)
+            if budget == REQUEST_TOKEN_BUDGET:  # Groq's small free tier: cut results the model already read
+                shorten_old_results(messages)
+            fit_to_budget(messages, TOOL_SCHEMAS, budget)
             try:
                 reply = self.llm.complete(messages, TOOL_SCHEMAS)
             except RequestTooLargeError:
@@ -182,7 +184,7 @@ class Agent:
         steps.append(f"Stopped after {MAX_TOOL_ROUNDS} rounds")
         short_summary = summary_messages(messages, steps)
         messages.append({"role": "user", "content": FORCE_ANSWER_PROMPT})
-        fit_to_budget(messages, SUBMIT_ONLY_SCHEMAS)
+        fit_to_budget(messages, SUBMIT_ONLY_SCHEMAS, request_budget(self.llm))
         for attempt in (messages, short_summary):
             try:
                 reply = self.llm.complete(attempt, SUBMIT_ONLY_SCHEMAS, tool_choice=FORCE_SUBMIT)
