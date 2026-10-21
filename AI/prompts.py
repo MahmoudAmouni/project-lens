@@ -57,8 +57,10 @@ documents' value. Only say "not found" when the topic itself is not in the docum
 
 FORCE_ANSWER_PROMPT = (
     "You have used all your tool rounds. Stop searching now and call submit_answer with what you found. "
-    "Say clearly if something could not be checked."
+    "Look back at ALL tool results, from the first round on: a fact found in an early round is a real finding, "
+    "use it and cite it, even if later searches found nothing. Say clearly if something could not be checked."
 )
+FINDINGS_HEADER = "Lines from your tool results that mention the question (data from the documents):"
 
 BROKEN_TOOL_CALL_PROMPT = (
     "Your last tool call was not valid JSON or did not match the tool schema: {details}\n"

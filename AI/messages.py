@@ -1,7 +1,7 @@
 """Building the chat messages the agent sends to the model."""
 
 from AI.llm_client import LLMReply
-from AI.prompts import FORCE_ANSWER_PROMPT, SYSTEM_PROMPT
+from AI.prompts import FINDINGS_HEADER, FORCE_ANSWER_PROMPT, SYSTEM_PROMPT
 
 HISTORY_MESSAGES = 6
 SUMMARY_EXCERPT_CHARS = 600
@@ -31,12 +31,16 @@ def assistant_message(reply: LLMReply) -> dict:
     }  # fmt: skip
 
 
-def summary_messages(messages: list[dict], steps: list[str]) -> list[dict]:
-    """A tiny request: the question, what was done, and short excerpts of the last tool results."""
-    question = next(m["content"] for m in reversed(messages) if m["role"] == "user")
+def force_prompt(digest: str) -> str:
+    """The last instruction, with the lines the tools found (see findings.py) when there are any."""
+    return f"{FORCE_ANSWER_PROMPT}\n\n{FINDINGS_HEADER}\n{digest}" if digest else FORCE_ANSWER_PROMPT
+
+
+def summary_messages(question: str, messages: list[dict], steps: list[str], digest: str = "") -> list[dict]:
+    """A tiny request: the question, what was done, the findings digest and excerpts of the last tool results."""
     excerpts = [m["content"][:SUMMARY_EXCERPT_CHARS] for m in messages if m["role"] == "tool"][-3:]
     notes = "\n".join(["Steps: " + "; ".join(steps), *excerpts])
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"{question}\n\nWhat you found so far:\n{notes}\n\n{FORCE_ANSWER_PROMPT}"},
+        {"role": "user", "content": f"{question}\n\nWhat you found so far:\n{notes}\n\n{force_prompt(digest)}"},
     ]
