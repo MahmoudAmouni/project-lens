@@ -15,6 +15,7 @@ from Server.ingestion.money_parser import detect_currency, parse_number
 
 HEADER_SEARCH_ROWS = 30  # the header is looked for in the first rows only
 NUMERIC_SHARE = 0.8  # a column is numeric when 80% of its cells are numbers
+CELL_NOTE = "Cell note"  # text that sat in a number column, e.g. "Amount (SAR): Rate Only"
 CURRENCY_SAMPLE_CELLS = 200  # cells checked for a currency word when the header has none
 IDENTIFIER_HEADER = re.compile(r"^(item|no|ref|code|id|#|s/?n|serial|clause|section|البند|رقم)\b", re.I)
 MONEY_HEADER = re.compile(r"amount|total|price|cost|value|rate|sum|المبلغ|القيمة|السعر|الإجمالي|التكلفة", re.I)
@@ -147,11 +148,17 @@ def clean_table(
 
     data = pd.DataFrame(body, columns=names, index=body_numbers, dtype=object)
     currencies: dict[str, str] = {}
+    cell_notes: dict[int, list[str]] = {}  # row -> text found in a number column ("Rate (SAR): Rate Only")
     for name in names:
         numbers = parse_number_column(name, data[name])
         if numbers is not None:
             currency = find_currency(name, data[name]) or (note_currency if MONEY_HEADER.search(name) else None)
+            for row, value, number in zip(data.index, data[name], numbers, strict=True):
+                if number is None and isinstance(value, str):
+                    cell_notes.setdefault(row, []).append(f"{name}: {value}")
             data[name] = pd.Series(numbers, index=data.index, dtype="float64")
             if currency:
                 currencies[name] = currency
+    if cell_notes:  # words like "Rate Only" or "Included" would be lost as blank numbers: keep them beside the row
+        data[CELL_NOTE] = pd.Series({row: "; ".join(texts) for row, texts in cell_notes.items()}, dtype=object)
     return CleanTable(data=data, currencies=currencies, summary_rows=find_summary_rows(data))
