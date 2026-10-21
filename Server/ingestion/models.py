@@ -29,6 +29,7 @@ class Table:
     location: str  # human text: "Sheet 'BOQ', rows 5-340" or "page 5"
     currencies: dict[str, str] = field(default_factory=dict)  # column -> "SAR", "USD", ...
     summary_rows: list[int] = field(default_factory=list)  # "Total" rows, left out of sums
+    notes: list[str] = field(default_factory=list)  # title lines above the header: "Revision A (SUPERSEDED)"
 
 
 @dataclass
