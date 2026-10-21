@@ -52,6 +52,7 @@ TERM_SYNONYMS = [
     ("defects liability period", "dlp", "defects notification period", "warranty period"),
     ("advance payment", "down payment", "mobilization advance"),
     ("performance bond", "performance guarantee", "performance security"),
+    ("contract sum", "contract price", "contract value", "contract amount", "accepted contract amount"),
 ]
 SYNONYM_GROUPS = COLUMN_SYNONYMS + TERM_SYNONYMS
 

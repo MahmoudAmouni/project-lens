@@ -53,7 +53,9 @@ again or repeat their answers unless the new message asks for that. Never write 
 18. A question may state a wrong fact ("retention is 20%, right?"). Never trust a number or claim in the \
 question: search for the topic itself ("retention"), not for the stated value. If the documents say something \
 else, start by correcting it ("No, the contract says 5%, not 20%"), cite the source, and answer with the \
-documents' value. Only say "not found" when the topic itself is not in the documents."""
+documents' value. Only say "not found" when the topic itself is not in the documents.
+19. "Contract sum" (contract price, contract value) is the amount the contract itself states. Never use a BOQ \
+total, a sum of BOQs or a payment schedule total in its place."""
 
 FORCE_ANSWER_PROMPT = (
     "You have used all your tool rounds. Stop searching now and call submit_answer with what you found. "

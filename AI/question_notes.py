@@ -33,6 +33,23 @@ AMOUNT_NOTE = (
     "Do not answer it from search_documents or read_document."
 )
 
+# "contract sum / price / value", "قيمة العقد", "2imet l 3a2ed": the amount the contract itself states.
+CONTRACT_SUM_WORDS = re.compile(
+    r"\bcontract (sum|price|value|amount)\b|\baccepted contract amount\b|(قيمه|مبلغ|سعر) (ال)?عقد"
+    r"|\b(2imet|2eemet|qimet|qimat|ade|adesh) (l |el )?3a2ed\b"
+)
+CONTRACT_SUM_NOTE = (
+    "'Contract sum' means the amount stated in the contract itself (Agreement, Particular Conditions or Letter "
+    "of Acceptance): find it with search_documents ('Contract Sum'). Never use a BOQ total, a sum of BOQs or a "
+    "payment schedule total as the contract sum. If the contract states none, say so; a BOQ total may be given "
+    "separately, clearly named as a BOQ total."
+)
+
+
+def asks_for_contract_sum(*texts: str) -> bool:
+    """True for "contract sum", "contract value", "قيمة العقد", "ade l 3a2ed"..."""
+    return bool(CONTRACT_SUM_WORDS.search(normalize_arabic(" ".join(texts)).lower()))
+
 
 def asks_for_amount_threshold(*texts: str) -> bool:
     """True for "items above SAR 1 million" in English, Arabic, Lebanese or Arabizi."""
@@ -54,6 +71,8 @@ def question_with_notes(question: str, route: Route) -> str:
         notes.append(AMOUNT_NOTE)
     elif route.question_en and route.question_ar:
         notes.append("When you use search_documents, search with the English AND the Arabic version.")
+    if asks_for_contract_sum(question, route.question_en):
+        notes.append(CONTRACT_SUM_NOTE)
     if route.search_terms:
         notes.append("Useful terms (also for table columns): " + ", ".join(route.search_terms))
     return question + "\n\n[Notes for you, not from the user]\n" + "\n".join(f"- {note}" for note in notes)
