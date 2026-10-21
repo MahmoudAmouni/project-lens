@@ -45,11 +45,11 @@ def test_plain_numbers_must_match_exactly():
 def test_made_up_rows_are_replaced_by_the_real_saved_rows(documents):
     llm = FakeLLM([tool_reply(UNIT_RATE_QUERY), tool_reply(call("submit_answer", {"answer": MADE_UP_ANSWER}))])
     answer = Agent(llm, documents).ask("what is the description of unit rate above 500")
-    assert answer.kind == "answer" and "550" not in answer.answer
-    assert answer.answer.startswith("Here are the matching rows")
+    assert answer.kind == "answer" and "550" not in answer.answer and "700" not in answer.answer
+    assert answer.answer == "There are 7 items with a unit rate above 500 SAR:"  # the true sentence stays
     descriptions = [row[answer.table["columns"].index("Description")] for row in answer.table["rows"]]
     assert len(descriptions) == 7 and "Structural steel frame" in descriptions
-    assert answer.steps[-1] == "Removed numbers the tools did not return"
+    assert "Removed a sentence with a number the tools did not return" in answer.steps
 
 
 def test_made_up_numbers_without_any_rows_become_not_found(documents):
