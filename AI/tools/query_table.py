@@ -4,6 +4,7 @@ import re
 
 import pandas as pd
 
+from AI.tools.filter_shapes import normal_columns, normal_filters, normal_flag
 from AI.tools.lookup import require_column
 from AI.tools.saved_tables import save_table
 from AI.tools.table_choice import other_matching_tables, tables_to_search
@@ -113,6 +114,8 @@ def query_table(
     include_total_rows: bool = False,
 ) -> ToolResult:
     """Rows matching all filters, with their source row, plus the full match count and sums."""
+    filters, columns = normal_filters(filters), normal_columns(columns)  # models write these in many shapes
+    descending, include_total_rows = normal_flag(descending, True), normal_flag(include_total_rows, False)
     limit = max(1, min(int(limit or DEFAULT_LIMIT), MAX_LIMIT))
     results, errors = [], []
     pairs, left_out = tables_to_search(context, document, table_id, filters or [])
