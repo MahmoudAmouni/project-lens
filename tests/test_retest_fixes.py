@@ -8,11 +8,13 @@ import pytest
 from AI.agent import Agent
 from AI.guards.number_check import keep_tool_numbers, known_numbers, unsupported_numbers
 from AI.language.not_found_words import opens_with_not_found, says_not_found
+from AI.language.replies import EXAMPLES
 from AI.tools.query_table import BIG_ROWS_FOR_MODEL, ROWS_FOR_MODEL, query_table
+from AI.tools.search_documents import search_documents
 from AI.tools.tool_context import ToolContext
 from Server.ingestion.folder_loader import load_folder
 from Server.ingestion.table_cleaner import CELL_NOTE, clean_table
-from tests.fake_llm import FakeLLM, call, tool_reply
+from tests.fake_llm import FakeLLM, call, text_reply, tool_reply
 
 
 @pytest.mark.parametrize(
@@ -95,10 +97,58 @@ def test_a_model_table_with_made_up_numbers_is_replaced():
     assert kept.table["rows"] == [["A", 2900425, "BOQ.xlsx · Summary · row 2"]]
 
 
-def test_query_rows_are_attached_when_the_model_forgets_the_table():
+def ask_after_query(answer_text: str):
     documents = load_folder(Path(__file__).resolve().parent.parent / "sample_docs").documents
     query = tool_reply(call("query_table", {"document": "BOQ_Phase1.xlsx", "table_id": "BOQ"}))
     source = {"document": "BOQ_Phase1.xlsx", "location": "Sheet BOQ"}
-    submit = tool_reply(call("submit_answer", {"answer": "Here are the BOQ items.", "sources": [source]}))
-    answer = Agent(FakeLLM([query, submit]), documents).ask("List every item in the BOQ")
+    submit = tool_reply(call("submit_answer", {"answer": answer_text, "sources": [source]}))
+    return Agent(FakeLLM([query, submit]), documents).ask("List every item in the BOQ")
+
+
+def test_query_rows_are_attached_when_the_answer_quotes_them():
+    answer = ask_after_query("Site clearance is SAR 180,000 and excavation SAR 1,176,000.")
     assert answer.table and len(answer.table["rows"]) > 8 and "Source" in answer.table["columns"]
+
+
+def test_rows_from_a_side_search_are_not_attached():
+    assert ask_after_query("The advance payment is 15% of the contract sum.").table is None
+
+
+def test_one_file_search_reports_other_files_with_the_words():
+    passages = [
+        {"document": "Agreement.pdf", "location": "page 4", "text": "Advance payment of 15%.", "score": 0.9},
+        {"document": "ملحق_العقد.pdf", "location": "page 1", "text": "عدد المصاعد المطلوبة: 9 مصاعد", "score": 0.5},
+        {"document": "BOQ.xlsx", "location": "row 3", "text": "Excavation to reduced levels", "score": 0.4},
+    ]
+    store = SimpleNamespace(search=lambda query, document=None, top_k=6: [
+        p for p in passages if document in (None, p["document"])
+    ])  # fmt: skip
+    documents = [SimpleNamespace(name=n, status="ok") for n in ("Agreement.pdf", "ملحق_العقد.pdf", "BOQ.xlsx")]
+    result = search_documents(ToolContext(documents=documents, vector_store=store), "المصاعد", "Agreement.pdf")
+    assert [f["document"] for f in result.data["also_in_other_files"]] == ["ملحق_العقد.pdf"]
+    assert "also found in 1 other file" in result.step
+
+
+def test_percentage_columns_are_never_added_up():
+    rows = [["Zone", "Planned %", "Actual %", "Amount (SAR)"], ["North", 12, 7.5, 1000], ["South", 9, 8.2, 2000],
+            ["Central", 8.5, 5.6, 3000]]  # fmt: skip
+    table = SimpleNamespace(id="Zones", data=clean_table(rows).data, location="page 1", currencies={},
+                            summary_rows=[], notes=[])  # fmt: skip
+    document = SimpleNamespace(name="Weekly.docx", status="ok", tables=[table], pages=[], file_type="word")
+    result = query_table(ToolContext(documents=[document]), "Weekly.docx", "Zones").data["tables"][0]
+    assert "Planned %" not in result["sums"] and "Actual %" not in result["sums"]
+    assert result["sums"]["Amount (SAR)"]["sum"] == 6000
+    assert "never added up" in result["not_added"]
+
+
+def test_plain_text_replies_lose_their_history_tags():
+    documents = load_folder(Path(__file__).resolve().parent.parent / "sample_docs").documents
+    read = tool_reply(call("read_document", {"document": "Contract_A.pdf", "start_page": 4, "end_page": 4}))
+    text = "Retention is **5%**.\n\n[Sources: Contract_A.pdf — page 4]"
+    llm = FakeLLM([read, text_reply(text), text_reply(text)])
+    answer = Agent(llm, documents).ask("What is the retention?")
+    assert "[Sources:" not in answer.answer and answer.answer.startswith("Retention is **5%**.")
+
+
+def test_suggestions_name_no_currency():
+    assert not any("SAR" in q or "ريال" in q for questions in EXAMPLES.values() for _, q in questions)

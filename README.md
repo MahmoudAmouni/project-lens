@@ -75,7 +75,7 @@ python -m Server.cli ./sample_docs
 | `FALLBACK_MODEL` | `openai/gpt-oss-20b,qwen/qwen3.8-27b` | Backup models, used in turn when the main one hits a rate limit. `MODEL` and these are the choices in the app's model picker |
 | `GEMINI_API_KEY` | (none) | Optional Google Gemini key. Adds Gemini as one more choice in the model picker, and the last backup when every Groq model is rate limited. Only in `.env` |
 | `GEMINI_MODEL` | `gemini-3.5-flash,gemini-3.5-flash-lite` | The Gemini model(s) offered in the picker |
-| `GEMINI_DAILY_REQUESTS` | `250` | Gemini's free daily request limit, for the "requests left" number; corrected by Google's limit errors |
+| `GEMINI_DAILY_REQUESTS` | `20` | Gemini's free daily request limit per model (Google's free tier is small), for the "requests left" number; corrected by Google's limit errors |
 | `OPENROUTER_API_KEY` | (none) | Optional OpenRouter key. Adds its free models to the picker, and as the backup after Gemini. Only in `.env` |
 | `OPENROUTER_MODEL` | `nvidia/nemotron-3-ultra-550b-a55b:free,minimax/minimax-m3.1-flash:free` | OpenRouter free model(s) with tool calling; names end with `:free` |
 | `USAGE_FILE` | `./.usage/token_usage.json` | Tokens used per model today, for the "tokens left" numbers in the model picker |

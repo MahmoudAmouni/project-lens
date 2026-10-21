@@ -40,10 +40,11 @@ CLARIFY = {  # "?", "." or one letter: nothing to answer yet
 }
 
 # (needs tables, question) per style: the cost question only when tables are loaded, the others need text.
+# No currency in them: the loaded files may be in SAR, AED, USD... ("above SAR 1 million" was wrong for an AED project).
 EXAMPLES = {
-    "en": [(True, "List all cost items above SAR 1 million"), (False, "Summarize the scope of work"),
+    "en": [(True, "List all cost items above 1 million"), (False, "Summarize the scope of work"),
            (False, "Extract all dates and deliverables")],
-    "ar": [(True, "اذكر جميع البنود التي تزيد قيمتها عن مليون ريال"), (False, "لخّص نطاق العمل"),
+    "ar": [(True, "اذكر جميع البنود التي تزيد قيمتها عن مليون"), (False, "لخّص نطاق العمل"),
            (False, "استخرج جميع التواريخ والمخرجات")],
     "ar-lb": [(True, "شو البنود يلي سعرها أكتر من مليون؟"), (False, "لخصلي نطاق العمل"),
               (False, "شو المواعيد والمخرجات بالعقد؟")],

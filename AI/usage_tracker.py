@@ -17,7 +17,9 @@ from pathlib import Path
 DAY_SECONDS = 24 * 60 * 60
 DEFAULT_DAILY_TOKEN_LIMIT = 200_000  # Groq's free tier for the gpt-oss and qwen models; corrected by its errors
 DAILY_LIMIT_PATTERN = re.compile(r"tokens per day \(TPD\): Limit (\d+), Used (\d+)")
-GEMINI_DAILY_QUOTA_PATTERN = re.compile(r"PerDay\S*.{0,300}?limit: (\d+)|limit: (\d+).{0,300}?PerDay", re.DOTALL)
+GEMINI_DAILY_QUOTA_PATTERN = re.compile(  # "...PerDay... limit: 20" or "free_tier_requests, limit: 20"
+    r"PerDay\S*.{0,300}?limit: (\d+)|limit: (\d+).{0,300}?PerDay|free_tier_requests, limit: (\d+)", re.DOTALL
+)
 logger = logging.getLogger("projectlens")
 
 
@@ -54,7 +56,8 @@ class UsageTracker:
         with self.lock:
             entry = self.entry(model)
             entry["counts_requests"] = True
-            entry.setdefault("requests_limit", daily_request_limit)  # a limit learned from an error stays
+            # The smaller of the setting and a limit learned from an error: an old saved 250 never hides Google's 20.
+            entry["requests_limit"] = min(entry.get("requests_limit", daily_request_limit), daily_request_limit)
 
     def record_reply(self, model: str, tokens: int, headers) -> None:
         """After a successful call: its tokens, and the limits Groq sent back in the headers."""
@@ -83,7 +86,7 @@ class UsageTracker:
                 entry["spent"] = [[time.time(), used]]  # Groq's own count replaces ours
             gemini_quota = GEMINI_DAILY_QUOTA_PATTERN.search(message) if entry.get("counts_requests") else None
             if gemini_quota:
-                entry["requests_limit"] = int(gemini_quota.group(1) or gemini_quota.group(2))
+                entry["requests_limit"] = int(next(group for group in gemini_quota.groups() if group))
                 entry["requests_used_floor"] = [time.time(), entry["requests_limit"]]  # all used, per Google
             self.save()
 

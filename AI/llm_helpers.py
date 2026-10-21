@@ -9,7 +9,9 @@ from AI.gemini_client import is_gemini
 from AI.openrouter_client import is_openrouter
 
 DEFAULT_WAIT_SECONDS = 5.0
-RETRY_IN_PATTERN = re.compile(r"retry in ([\d.]+)s", re.IGNORECASE)
+RETRY_IN_PATTERN = re.compile(r"retry in ((?:[\d.]+[hms])+)", re.IGNORECASE)  # "23.5s" or "23h1m31.0s"
+DURATION_PART = re.compile(r"([\d.]+)([hms])")
+DAILY_WAIT_SECONDS = 3600  # a limit that lasts over an hour is a daily quota, not a per-minute one
 
 
 def model_names(text: str | None) -> list[str]:
@@ -26,8 +28,10 @@ def provider_name(model: str) -> str:
 
 
 def is_daily_limit(error: groq.RateLimitError) -> bool:
-    """Groq says "per day", Gemini "PerDay", OpenRouter "free-models-per-day"."""
-    return any(mark in str(error) for mark in ("per day", "PerDay", "per-day"))
+    """Groq: "per day"; Gemini: "PerDay" or "free_tier_requests ... retry in 23h"; OpenRouter: "free-models-per-day"."""
+    if any(mark in str(error) for mark in ("per day", "PerDay", "per-day", "free_tier_requests")):
+        return True
+    return retry_after_seconds(error) >= DAILY_WAIT_SECONDS
 
 
 def providers_of(models: list[str]) -> str:
@@ -54,7 +58,13 @@ def retry_after_seconds(error: groq.RateLimitError) -> float:
     except (AttributeError, TypeError, ValueError):
         return DEFAULT_WAIT_SECONDS
     found = RETRY_IN_PATTERN.search(str(error))
-    return float(found.group(1)) + 0.5 if found else DEFAULT_WAIT_SECONDS
+    return duration_seconds(found.group(1)) + 0.5 if found else DEFAULT_WAIT_SECONDS
+
+
+def duration_seconds(text: str) -> float:
+    """ "23.5s" -> 23.5, "23h1m31.0s" -> 82891.0 (Google writes a used-up daily quota in hours)."""
+    units = {"h": 3600, "m": 60, "s": 1}
+    return sum(float(number) * units[unit] for number, unit in DURATION_PART.findall(text))
 
 
 def rate_limit_message(daily_limit_hit: bool, wait_seconds: float, models: list[str], busy: bool = False) -> str:

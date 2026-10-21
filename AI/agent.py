@@ -4,14 +4,13 @@ import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from AI.answer_finish import finish_answer
 from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, request_budget, shorten_old_results
 from AI.errors import QuestionStopped, RequestTooLargeError, ToolCallFormatError
 from AI.findings import findings_digest
-from AI.guards.answer_check import check_answer, sources_from_history, sources_from_tool
-from AI.guards.number_check import keep_tool_numbers
+from AI.guards.answer_check import sources_from_history, sources_from_tool
 from AI.guards.scope_check import document_words, mentions_documents
-from AI.language.not_found_words import opens_with_not_found, says_not_found
-from AI.language.replies import example_questions, fixed_reply, unreadable_note
+from AI.language.replies import example_questions, fixed_reply
 from AI.llm_client import LLMReply
 from AI.messages import assistant_message, build_messages, force_prompt, summary_messages
 from AI.prompts import (
@@ -25,7 +24,6 @@ from AI.tool_runner import run_tool_call
 from AI.tools.list_documents import document_overview
 from AI.tools.query_table import BIG_ROWS_FOR_MODEL, ROWS_FOR_MODEL
 from AI.tools.registry import SUBMIT_ONLY_SCHEMAS, TOOL_SCHEMAS
-from AI.tools.saved_tables import combine_saved_tables
 from AI.tools.tool_context import DocumentLike, FinalAnswer, ToolContext
 
 MAX_TOOL_ROUNDS = 10
@@ -113,14 +111,7 @@ class Agent:
         self.context.known_texts = self.tool_texts  # the same list: calculate may use only these numbers
         self.context.saved_tables.clear()  # an answer may only attach rows saved for this question (t1, t2...)
         answer = self.answer_from_documents(question_with_notes(question, route), history)
-        answer = keep_tool_numbers(answer, self.tool_texts, self.context, list(self.context.saved_tables), route.style)
-        answer = check_answer(answer, self.consulted, fixed_reply("not_found", route.style))
-        if answer.kind == "answer" and not answer.table and opens_with_not_found(answer.answer, question):
-            answer.kind, answer.sources = "not_found", []  # nothing was found: a searched file is not a source
-        if answer.kind == "answer" and not answer.table and self.context.saved_tables:  # the rows behind the answer
-            answer.table = combine_saved_tables(self.context, list(self.context.saved_tables)[-1:])
-        if answer.kind == "not_found" or says_not_found(answer.answer):  # it may be in an unreadable file: say which
-            answer.answer += unreadable_note(answer.answer, self.context.documents, route.style)
+        answer = finish_answer(answer, question, self.context, self.tool_texts, self.consulted, route.style)
         return answer.with_style(route.style)
 
     def fixed_answer(self, kind: str, style: str, step: str) -> AgentAnswer:

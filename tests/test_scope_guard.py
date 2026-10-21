@@ -60,7 +60,7 @@ def test_refusal_is_in_the_user_style_with_examples_in_that_style(documents):
 def test_greeting_is_answered_without_ai_even_with_no_router_model(documents):
     answer = Agent(never_called(), documents).ask("مرحبا")
     assert (answer.kind, answer.style) == ("greeting", "ar")
-    assert answer.suggestions[0] == "اذكر جميع البنود التي تزيد قيمتها عن مليون ريال"
+    assert answer.suggestions[0] == "اذكر جميع البنود التي تزيد قيمتها عن مليون"
 
 
 @pytest.mark.parametrize(

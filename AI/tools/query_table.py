@@ -18,6 +18,7 @@ ROWS_FOR_MODEL = 8  # per table for Groq (small free tier); big-limit models see
 BIG_ROWS_FOR_MODEL = 60  # Gemini / OpenRouter: the model sees the rows instead of guessing the hidden ones
 ALL_DOCUMENTS = "*"
 NOT_AN_AMOUNT = re.compile(r"\b(rate|unit|qty|quantity|page|no\.?|number)\b|%", re.I)  # not money columns
+PERCENT_COLUMN = re.compile(r"%|percent|share|ratio|progress|نسبة", re.I)  # adding these up means nothing
 AMOUNT_NAME = re.compile(r"amount|total|cost|value|price|sum|المبلغ|القيمة|الإجمالي", re.I)
 
 
@@ -34,6 +35,8 @@ def numeric_sums(table, rows: pd.DataFrame) -> dict:
     rows = rows.drop(index=[number for number in table.summary_rows if number in rows.index])
     sums = {}
     for column in rows.columns:
+        if PERCENT_COLUMN.search(str(column)):
+            continue  # 12% + 9% + 8.5% is not "29.5% progress"
         if pd.api.types.is_numeric_dtype(rows[column]) and str(column) not in ("Page", "Source page"):
             sums[str(column)] = {"sum": to_plain(rows[column].sum()), "currency": table.currencies.get(column)}
     return sums
@@ -86,6 +89,9 @@ def query_one_table(document, table, filters, columns, sort_by, descending, limi
         result["not_shown"] = f"{len(matches) - limit} more rows match; count and sums include them."
     if notes:
         result["notes"] = notes
+    percents = [str(c) for c in matches.columns if PERCENT_COLUMN.search(str(c))]
+    if percents:
+        result["not_added"] = f"{', '.join(percents)}: percentages are never added up; quote the document's own figure."
     total_lines = sum(1 for row in rows if row.get("is_total"))
     if total_lines:
         result["total_lines"] = f"{total_lines} row(s) marked is_total are the file's own totals; sums leave them out."
