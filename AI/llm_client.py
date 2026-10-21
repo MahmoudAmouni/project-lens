@@ -1,22 +1,22 @@
-"""The one place that talks to the AI models: Groq, and Google Gemini when its key is set.
+"""The one place that talks to the AI models: Groq, plus Google Gemini and OpenRouter when their keys are set.
 
 Groq's free tier allows about 8,000 tokens per minute per model. On a rate limit we switch to the
 other model (it has its own limit); when both are limited we wait as long as Groq asks, then retry.
 The user may pick which model goes first; every reply's token use is counted (see usage_tracker.py).
-Gemini is used when the user picks it, and as the last resort while every Groq model is rate limited.
+Gemini and OpenRouter are used when the user picks them, and as the last resort while every Groq model is limited.
 A busy model (server error 5xx, e.g. Gemini 503 "overloaded") is rested for a while, like a rate limit.
 """
 
 import json
 import time
-from dataclasses import dataclass, field
 
 import groq
 
 from AI.errors import AIRateLimitedError, AIUnavailableError, QuestionStopped, ToolCallFormatError
-from AI.gemini_client import extra_content_of, is_gemini, make_gemini_client, messages_for_model
+from AI.gemini_client import extra_content_of, make_gemini_client, messages_for_model
 from AI.llm_helpers import (
     DEFAULT_WAIT_SECONDS,
+    is_daily_limit,
     key_name,
     model_names,
     provider_name,
@@ -26,6 +26,8 @@ from AI.llm_helpers import (
     status_problem,
     tool_use_failure,
 )
+from AI.llm_reply import LLMReply, ToolCall
+from AI.openrouter_client import DAILY_FREE_REQUESTS, make_openrouter_client
 from AI.usage_tracker import UsageTracker
 
 MAX_TRIES = 3  # for errors other than rate limits and busy servers (timeouts, lost connections)
@@ -33,21 +35,6 @@ BUSY_SECONDS = 30.0  # a model whose server answered 5xx is not tried again for 
 MAX_TOTAL_WAIT_SECONDS = 90.0  # rate limits are normal on the free tier: wait up to this long in total
 REQUEST_TIMEOUT_SECONDS = 60.0
 PAUSE_STEP_SECONDS = 0.25
-
-
-@dataclass
-class ToolCall:
-    id: str
-    name: str
-    arguments: str  # raw JSON text, parsed by the agent
-    extra_content: dict | None = None  # Gemini's thought signature, sent back with the call next round
-
-
-@dataclass
-class LLMReply:
-    content: str
-    tool_calls: list[ToolCall] = field(default_factory=list)
-    model: str = ""
 
 
 class LLMClient:
@@ -64,6 +51,8 @@ class LLMClient:
         gemini_api_key: str = "",
         gemini_model: str = "",
         gemini_daily_requests: int = 0,
+        openrouter_api_key: str = "",
+        openrouter_model: str = "",
     ):
         """`fallback_model` and `gemini_model` may list several models: "openai/gpt-oss-20b,qwen/qwen3.8-27b"."""
         if not api_key:
@@ -72,17 +61,27 @@ class LLMClient:
         self.groq_models = list(dict.fromkeys([model, *model_names(fallback_model)]))  # each has its own limits
         self.gemini_models = model_names(gemini_model) if gemini_api_key else []
         self.gemini_client = make_gemini_client(gemini_api_key, REQUEST_TIMEOUT_SECONDS) if self.gemini_models else None
-        self.models = list(self.groq_models)  # the order they are tried in; Gemini joins only when picked
-        self.configured_models = [*self.groq_models, *self.gemini_models]  # the choices shown to the user
+        self.openrouter_models = model_names(openrouter_model) if openrouter_api_key else []
+        self.openrouter_client = (
+            make_openrouter_client(openrouter_api_key, REQUEST_TIMEOUT_SECONDS) if self.openrouter_models else None
+        )
+        self.models = list(self.groq_models)  # the order they are tried in; backups join only when picked
+        self.configured_models = [*self.groq_models, *self.backup_models]  # the choices shown to the user
         self.usage = usage or UsageTracker()
-        for name in self.gemini_models:
-            self.usage.count_requests(name, gemini_daily_requests)
+        for name in self.backup_models:  # both limit requests per day, not tokens
+            daily = gemini_daily_requests if name in self.gemini_models else DAILY_FREE_REQUESTS
+            self.usage.count_requests(name, daily)
         self.reasoning_effort = reasoning_effort
         self.limited_until: dict[str, float] = {}  # model -> time its rate limit resets
         self.daily_limit_hit = False
         self.busy_models: set[str] = set()  # resting after a server error (5xx), not a rate limit
         self.max_wait_seconds = max_wait_seconds  # small for the router: it falls back instead of waiting
         self.should_stop = None  # set per question: a function that returns True once the user pressed Stop
+
+    @property
+    def backup_models(self) -> list[str]:
+        """Gemini, then OpenRouter: other providers with their own free limits."""
+        return [*self.gemini_models, *self.openrouter_models]
 
     @property
     def model(self) -> str:
@@ -94,8 +93,8 @@ class LLMClient:
             self.models = [model, *[name for name in self.groq_models if name != model]]
 
     def check(self, model: str) -> None:
-        """A tiny call, only to read the limits Groq sends back for this model. Gemini sends none: skipped."""
-        if is_gemini(model):
+        """A tiny call, only to read the limits Groq sends back for this model. Other providers send none: skipped."""
+        if model in self.backup_models:
             return
         try:
             self._call(model, [{"role": "user", "content": "hi"}], [], "auto", max_tokens=1)
@@ -106,9 +105,9 @@ class LLMClient:
 
     def pick_model(self) -> tuple[str, float]:
         """The first model that is free, else the one whose rate limit resets first, and how long to wait for it.
-        Gemini comes last: it is used when every Groq model is limited, so the app keeps answering."""
+        Backups come last: they are used when every Groq model is limited, so the app keeps answering."""
         now = time.monotonic()
-        candidates = self.models + [name for name in self.gemini_models if name not in self.models]
+        candidates = self.models + [name for name in self.backup_models if name not in self.models]
         model = min(candidates, key=lambda m: max(0.0, self.limited_until.get(m, 0) - now))  # ties: first in order
         return model, max(0.0, self.limited_until.get(model, 0) - now)
 
@@ -131,12 +130,13 @@ class LLMClient:
             except groq.RateLimitError as error:
                 self.limited_until[model] = time.monotonic() + retry_after_seconds(error)
                 self.usage.record_limit(model, str(error), retry_after_seconds(error))
-                self.daily_limit_hit = "per day" in str(error) or "PerDay" in str(error)
+                self.daily_limit_hit = is_daily_limit(error)
                 self.busy_models.discard(model)
                 attempt -= 1  # a rate limit is not a failure; the deadline above limits the waiting
             except groq.NotFoundError:
                 self.models = [name for name in self.models if name != model]  # removed by the provider: skip it
                 self.gemini_models = [name for name in self.gemini_models if name != model]
+                self.openrouter_models = [name for name in self.openrouter_models if name != model]
             except groq.AuthenticationError as error:
                 raise AIUnavailableError(f"The {key_name(model)} in .env is not valid.") from error
             except groq.BadRequestError as error:
@@ -160,7 +160,7 @@ class LLMClient:
         raise AIRateLimitedError(self.wait_message(0.0, ""))
 
     def wait_message(self, wait: float, model: str) -> str:
-        models = [*self.models, *self.gemini_models]
+        models = [*self.models, *self.backup_models]
         return rate_limit_message(self.daily_limit_hit, wait, models, busy=model in self.busy_models)
 
     def pause(self, seconds: float) -> None:
@@ -173,6 +173,11 @@ class LLMClient:
             if left <= 0:
                 return
             time.sleep(min(PAUSE_STEP_SECONDS, left))
+
+    def client_for(self, model: str) -> groq.Groq:
+        if model in self.gemini_models:
+            return self.gemini_client
+        return self.openrouter_client if model in self.openrouter_models else self.client
 
     def complete_json(self, messages: list[dict]) -> dict:
         """A reply that must be one JSON object (no tools). Raises ValueError when it is not."""
@@ -187,7 +192,7 @@ class LLMClient:
         max_tokens: int | None = None,
     ) -> LLMReply:  # fmt: skip
         options = request_options(model, tools, tool_choice, json_mode, max_tokens, self.reasoning_effort)
-        client = self.gemini_client if model in self.gemini_models else self.client
+        client = self.client_for(model)
         messages = messages_for_model(messages, gemini=client is self.gemini_client)
         raw = client.chat.completions.with_raw_response.create(model=model, messages=messages, **options)
         response = raw.parse()
