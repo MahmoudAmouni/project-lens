@@ -24,6 +24,7 @@ class ChatRequest(BaseModel):
 class TableData(BaseModel):
     columns: list[str]
     rows: list[list[str | int | float | None]]
+    total_rows: list[int] = []  # indexes of subtotal / grand total rows: shown, but not added into the total
 
 
 class SourceInfo(BaseModel):
