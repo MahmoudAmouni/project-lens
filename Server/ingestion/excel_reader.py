@@ -16,6 +16,7 @@ logger = logging.getLogger("projectlens")
 
 OLE_SIGNATURE = b"\xd0\xcf\x11\xe0"  # old .xls files and password protected .xlsx files start with this
 NOTE_ROWS = 12  # title and note rows (e.g. "All prices in USD") are looked for in the first rows
+MAX_NOTES, MAX_NOTE_CHARS = 3, 200  # title lines kept on a table, so the model knows its revision and status
 FAST_MODE_MB = 2  # bigger files are read with calamine (much faster, but merged cells are not filled)
 
 
@@ -72,12 +73,14 @@ def sheet_to_tables(sheet_name: str, rows: list[list[object]]) -> list[Table]:
     """Clean one sheet into one table, or several when it holds separate tables. Row numbers stay exact."""
     parts = split_tables(rows)
     note_currency = currency_in_notes([sheet_name, *note_texts(rows)])  # "All prices in US Dollars" above
-    tables = []
+    tables, titles = [], None
     for number, (part_rows, row_numbers) in enumerate(parts, start=1):
         cleaned = clean_table(part_rows, row_numbers=row_numbers, note_currency=note_currency)
         if cleaned is None:
             continue
         first, last = cleaned.data.index[0], cleaned.data.index[-1]
+        if titles is None:  # the lines above the first header (Excel row `first` - 1) describe the whole sheet
+            titles = [text[:MAX_NOTE_CHARS] for text in note_texts(rows[: max(0, first - 2)])][:MAX_NOTES]
         tables.append(
             Table(
                 id=sheet_name if len(parts) == 1 else f"{sheet_name} (table {number})",
@@ -85,6 +88,7 @@ def sheet_to_tables(sheet_name: str, rows: list[list[object]]) -> list[Table]:
                 location=f"Sheet '{sheet_name}', rows {first}-{last}",
                 currencies=cleaned.currencies,
                 summary_rows=cleaned.summary_rows,
+                notes=titles,
             )
         )
     return tables
