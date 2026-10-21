@@ -6,16 +6,16 @@ from dataclasses import dataclass, field
 
 from AI.context_budget import REQUEST_TOKEN_BUDGET, fit_to_budget, request_budget, shorten_old_results
 from AI.errors import QuestionStopped, RequestTooLargeError, ToolCallFormatError
+from AI.findings import findings_digest
 from AI.guards.answer_check import check_answer, sources_from_history, sources_from_tool
 from AI.guards.number_check import keep_tool_numbers
 from AI.guards.scope_check import document_words, mentions_documents
 from AI.language.not_found_words import opens_with_not_found, says_not_found
 from AI.language.replies import example_questions, fixed_reply, unreadable_note
 from AI.llm_client import LLMReply
-from AI.messages import assistant_message, build_messages, summary_messages
+from AI.messages import assistant_message, build_messages, force_prompt, summary_messages
 from AI.prompts import (
     BROKEN_TOOL_CALL_PROMPT,
-    FORCE_ANSWER_PROMPT,
     SUBMIT_REMINDER_PROMPT,
     TOO_MANY_SEARCHES_PROMPT,
 )
@@ -160,7 +160,7 @@ class Agent:
             answer = self.run_tools(reply, messages, steps)
             if answer:
                 return answer
-        return self.force_answer(messages, steps)
+        return self.force_answer(question, messages, steps)
 
     def run_tools(self, reply: LLMReply, messages: list[dict], steps: list[str]) -> AgentAnswer | None:
         """Run every tool call of one reply. Returns the answer when submit_answer succeeded."""
@@ -181,11 +181,12 @@ class Agent:
             self.search_reminder_sent = True
         return None
 
-    def force_answer(self, messages: list[dict], steps: list[str]) -> AgentAnswer:
+    def force_answer(self, question: str, messages: list[dict], steps: list[str]) -> AgentAnswer:
         """Round limit reached: ask for submit_answer only; if that fails, ask again with a tiny summary."""
         steps.append(f"Stopped after {MAX_TOOL_ROUNDS} rounds")
-        short_summary = summary_messages(messages, steps)
-        messages.append({"role": "user", "content": FORCE_ANSWER_PROMPT})
+        digest = findings_digest(question, self.tool_texts[1:])  # uncut results: early findings are not lost
+        short_summary = summary_messages(question, messages, steps, digest)
+        messages.append({"role": "user", "content": force_prompt(digest)})
         fit_to_budget(messages, SUBMIT_ONLY_SCHEMAS, request_budget(self.llm))
         for attempt in (messages, short_summary):
             try:
