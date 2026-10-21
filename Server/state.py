@@ -110,6 +110,7 @@ class AppState:
                 settings.groq_api_key, settings.model, settings.fallback_model, usage=self.usage,
                 gemini_api_key=settings.gemini_api_key, gemini_model=settings.gemini_model,
                 gemini_daily_requests=settings.gemini_daily_requests,
+                openrouter_api_key=settings.openrouter_api_key, openrouter_model=settings.openrouter_model,
             )  # fmt: skip
             self.router = make_router(settings, self.usage)
         return self.llm
