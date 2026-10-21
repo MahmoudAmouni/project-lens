@@ -55,3 +55,10 @@ def test_a_table_without_total_lines_has_no_total_rows_key(context):
 def test_the_api_table_accepts_total_rows():
     assert TableData(columns=["Item"], rows=[["A"], ["Total"]], total_rows=[1]).total_rows == [1]
     assert TableData(columns=["Item"], rows=[["A"]]).total_rows == []
+
+
+def test_sums_never_add_the_total_lines(context):
+    plain = query_table(context, "BOQ_Phase1.xlsx", "BOQ").data["tables"][0]
+    with_totals = query_table(context, "BOQ_Phase1.xlsx", "BOQ", include_total_rows=True).data["tables"][0]
+    assert with_totals["sums"] == plain["sums"]  # asking to see the total lines must not double the sums
+    assert with_totals["match_count"] > plain["match_count"]

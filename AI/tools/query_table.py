@@ -28,7 +28,9 @@ def row_source(document, table, row_number: int, row: pd.Series) -> str:
 
 
 def numeric_sums(table, rows: pd.DataFrame) -> dict:
-    """Sum of every number column over the matching rows, with its currency when known."""
+    """Sum of every number column over the matching rows, with its currency when known.
+    Total and subtotal lines are never added: they already hold the sum of the items (counting them doubles it)."""
+    rows = rows.drop(index=[number for number in table.summary_rows if number in rows.index])
     sums = {}
     for column in rows.columns:
         if pd.api.types.is_numeric_dtype(rows[column]) and str(column) not in ("Page", "Source page"):
@@ -83,6 +85,9 @@ def query_one_table(document, table, filters, columns, sort_by, descending, limi
         result["not_shown"] = f"{len(matches) - limit} more rows match; count and sums include them."
     if notes:
         result["notes"] = notes
+    total_lines = sum(1 for row in rows if row.get("is_total"))
+    if total_lines:
+        result["total_lines"] = f"{total_lines} row(s) marked is_total are the file's own totals; sums leave them out."
     return result
 
 
