@@ -86,7 +86,10 @@ def test_excel_boq_keeps_exact_amounts_and_row_numbers(documents):
 
 def test_header_on_row_four_and_merged_cells_are_handled(documents):
     table = documents["BOQ_Phase2.xlsx"].find_table("BOQ Phase 2")
-    assert list(table.data.columns) == ["Item No.", "Section", "Description", "Unit", "Quantity", "Amount"]
+    assert list(table.data.columns) == [
+        "Item No.", "Section", "Description", "Unit", "Quantity", "Amount", "Cell note",
+    ]  # fmt: skip
+    assert table.data["Cell note"].dropna().tolist() == ["Amount: Lump sum"]  # text kept, not lost as a blank
     assert table.data.index[0] == 5
     assert table.data.loc[7, "Section"] == "Mechanical"  # filled from merged cell B5:B7
     assert table.data.loc[5, "Item No."] == "4.1"  # item codes stay text
