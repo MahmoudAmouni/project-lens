@@ -1,19 +1,31 @@
-# Submission note: ProjectLens
+# Note
 
-**AI coding agent:** Claude Code. I planned the architecture, the tools and the edge cases myself (see [PLAN.md](PLAN.md)) and wrote the rules in `CLAUDE.md`: folder structure, commit format, no hard-coded screen text, the key only in `.env`. Claude Code built the project one phase at a time, and I reviewed each phase before the next one started. Every phase was tested against the real models. Each problem this found got a fix and a test: the model guessing totals, unusable tool calls, follow-ups it did not understand, free-tier rate limits.
+| | |
+| --- | --- |
+| **Built with** | Claude Code using **Claude Opus 5.5** |
+| **Time** | about **2 days** (19 to 21 October 2026) |
+| **My part** | the plan, the rules (`CLAUDE.md`), reviewing every step, live testing |
+| **Result** | 470 small commits · 492 automated tests · tested live in 4 languages |
 
-**Time:** about 9.5 hours on 19 October 2026, plus the time spent writing the plan. The core agent (reading files, tools, sources, edge cases, web UI) was working after about 3.5 hours. The rest went into Arabic support, chat memory, the scope guard and the model picker. 273 small commits, one branch per group of changes, merged into `main` through pull requests.
+## Key design decisions
 
-**Key design decisions**
+| Decision | Why |
+| --- | --- |
+| **Code computes the numbers, not the AI** | search only returns a few passages, so it would miss rows in "items above 1 million"; `query_table` checks every row |
+| **The AI never retypes a table** | rows are saved by the tool and attached by id, so the table is exactly what the code found |
+| **Every answer is checked** | numbers, currency and sources must come from a tool; if not, they are removed or corrected |
+| **A router before the agent** | greetings, off-topic and "ignore your rules" get an instant fixed reply without using the AI |
+| **Reply in the user's style** | English, Arabic, Lebanese or Arabizi; file names and numbers are never translated |
+| **Built for free AI keys** | Groq first, Gemini and OpenRouter as backups, limits shown in the app |
+| **No Docker, no database** | one setup script, so anyone can run it |
 
-- **Hybrid agent, not only RAG.** Search finds clauses and facts in text. Numbers come from `query_table`, which checks every row: RAG returns the top few passages and would silently miss items in a "> SAR 1 million" filter.
-- **The model never retypes numbers.** `query_table` saves its rows under an id, and `submit_answer` attaches them by that id. The table in the answer is exactly what the code computed. Totals are per currency, and "Total" rows are left out so nothing is counted twice.
-- **One `Table` model** for Excel sheets and PDF tables (including BOQs that run over several pages), so one tool filters both.
-- **A router before the agent.** A small model detects the writing style (English, Arabic, Lebanese, Arabizi) and the intent. Greetings, off-topic questions and prompt injections get fixed replies without spending tokens; follow-ups reuse the previous answer's sources.
-- **Every fact cites its source** (file + page, or file + sheet + row). An answer that comes back without sources gets the locations the tools actually read, or becomes "not found".
-- **Built for free tiers.** Groq for fast tool calling, backup models, waits that follow `retry-after`, a token budget per request, and a model picker that shows how much of each model's free limit is left. Gemini is an optional extra choice.
-- **No Docker or database**, so reviewers can set it up with one script.
+## With more time I would add
 
-**Testing:** 198 pytest tests with no API cost (a fake LLM drives the agent), plus `scripts/evaluate.py`, which runs 20 real questions and checks the facts in each answer.
-
-**With more time:** OCR for scanned PDFs, streaming answers, clicking a source to open the PDF at that page, reranking for search, Docker, and a larger evaluation set run in CI.
+| Improvement | Why |
+| --- | --- |
+| OCR for scanned PDFs | scanned files are detected but not read yet |
+| Click a source to open the PDF at that page | faster checking of answers |
+| Streaming answers | text appears while it is written |
+| Better search ranking | more accurate on long specifications |
+| A paid model by default | no waiting on free-tier limits |
+| Docker + a bigger test set in CI | easier deployment, safer changes |
