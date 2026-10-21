@@ -18,13 +18,12 @@ CURRENCY_WORDS = {
 # Latin + Arabic letters (U+0600 to U+06FF), used to find whole words.
 WORD_LETTERS = "a-z" + chr(0x0600) + "-" + chr(0x06FF)
 
-MULTIPLIERS = {
+MULTIPLIERS = {  # no "mm": in construction files it means millimetres ("20 mm" aggregate), not million
     "k": 1e3,
     "thousand": 1e3,
     "ألف": 1e3,
     "m": 1e6,
     "mn": 1e6,
-    "mm": 1e6,
     "million": 1e6,
     "مليون": 1e6,
     "b": 1e9,
