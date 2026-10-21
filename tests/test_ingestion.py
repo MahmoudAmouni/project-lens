@@ -126,6 +126,8 @@ def test_pdf_table_over_two_pages_is_one_table_with_pages(documents):
         ("1.250.000,50", 1250000.5),
         ("ر.س 2,000", 2000),
         ("150 m", None),  # meters, not millions
+        ("20 mm", None),  # millimetres (aggregate size), not millions
+        ("20mm", None),
         ("2026-01-05", None),
         ("Lump sum", None),
         ("-", None),
