@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from AI.agent import Agent
-from AI.language.not_found_words import says_not_found
+from AI.language.not_found_words import opens_with_not_found, says_not_found
 from Server.ingestion.folder_loader import load_folder
 from tests.fake_llm import FakeLLM, call, tool_reply
 
@@ -52,3 +52,21 @@ def test_a_found_answer_gets_no_note(documents):
     text = "Retention is **5%**."
     submit = tool_reply(call("submit_answer", {"answer": text, "sources": [{"document": "Contract_A.pdf", "page": 4}]}))
     assert Agent(FakeLLM([read, submit]), documents).ask("What is the retention?").answer == text
+
+
+def test_a_whole_not_found_answer_shows_no_searched_file_as_a_source(documents):
+    read = tool_reply(call("read_document", {"document": "Contract_A.pdf", "start_page": 4, "end_page": 4}))
+    text = "I could not find the insurance excess. I searched the contract and the specifications."
+    submit = tool_reply(call("submit_answer", {"answer": text, "sources": [{"document": "Contract_A.pdf", "page": 4}]}))
+    answer = Agent(FakeLLM([read, submit]), documents).ask("What is the insurance excess?")
+    assert (answer.kind, answer.sources) == ("not_found", [])
+
+
+@pytest.mark.parametrize(
+    ("text", "question", "whole"),
+    [("I could not find the excess.", "", True), ("I could not find milestone 3.", "milestone 3?", True),
+     ("Retention is 5%. The excess is not mentioned.", "", False),
+     ("I could not find the excess, but the cover is 110%.", "", False), ("The sum is SAR 5,000.", "", False)],
+)  # fmt: skip
+def test_only_a_whole_not_found_answer_loses_its_sources(text, question, whole):
+    assert opens_with_not_found(text, question) is whole
